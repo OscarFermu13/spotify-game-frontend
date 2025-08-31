@@ -10,6 +10,8 @@ function App() {
   const [playlistUrl, setPlaylistUrl] = useState('');
   const [count, setCount] = useState(5);
   const [tracks, setTracks] = useState(null);
+  const [penalty, setPenalty] = useState(5);
+  const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
     // read token from query if present (after auth redirect)
@@ -42,6 +44,7 @@ function App() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTracks(resp.data.tracks);
+      setPlaying(true);
     } catch (e) {
       alert('Error obteniendo playlist. Asegúrate de estar autenticado y que la URL es correcta.');
       console.error(e);
@@ -49,42 +52,103 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow">
-        <h1 className="text-2xl font-bold mb-4">🎧 Spotify Quiz (POC)</h1>
+    <div className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 p-6">
+      <div className="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-lg">
+        <h1 className="text-3xl font-extrabold mb-6 text-center text-slate-800">
+          🎧 Spotify Quiz
+        </h1>
 
         {!token ? (
-          <div>
-            <p className="mb-4">Conéctate con Spotify para permitir reproducción con Web Playback SDK (opcional).</p>
-            <button onClick={handleLogin} className="px-4 py-2 bg-green-500 text-white rounded">Conectar con Spotify</button>
+          <div className="text-center mb-6">
+            <p className="mb-4 text-slate-600">
+              Conéctate con Spotify para poder reproducir canciones con Web Playback SDK.
+            </p>
+            <button
+              onClick={handleLogin}
+              className="px-6 py-2 bg-green-600 hover:bg-green-700 transition text-white font-semibold rounded-lg shadow"
+            >
+              Conectar con Spotify
+            </button>
           </div>
         ) : (
-          <div className="mb-4">
-            <p className="mb-2">Conectado.</p>
-            <button onClick={() => { localStorage.removeItem('token'); setToken(null); setTracks(null); }} className="px-3 py-1 border rounded">Cerrar sesión</button>
+          <div className="flex items-center justify-between mb-6 bg-slate-50 p-3 rounded-lg border">
+            <p className="text-slate-700">✅ Conectado como <span className="font-semibold">{user?.name}</span></p>
+            <button
+              onClick={() => {
+                localStorage.removeItem('token');
+                setToken(null);
+                setTracks(null);
+              }}
+              className="px-3 py-1 border rounded-lg text-slate-600 hover:bg-slate-100 transition"
+            >
+              Cerrar sesión
+            </button>
           </div>
         )}
 
-        <div className="mt-6">
-          <label className="block mb-1">URL de la playlist:</label>
-          <input value={playlistUrl} onChange={e => setPlaylistUrl(e.target.value)} className="w-full p-2 border rounded mb-2" placeholder="https://open.spotify.com/playlist/..." />
-          <div className="flex items-center gap-2">
-            <label>Numero canciones:</label>
-            <select value={count} onChange={e => setCount(Number(e.target.value))} className="p-2 border rounded">
-              <option>3</option>
-              <option>5</option>
-              <option>10</option>
-            </select>
-            <button onClick={fetchPlaylist} className="ml-auto px-4 py-2 bg-blue-600 text-white rounded">Cargar canciones</button>
-          </div>
-        </div>
+        {!playing && (
+          <div className="space-y-4">
+            {/* URL Playlist */}
+            <div>
+              <label className="block mb-1 font-medium text-slate-700">
+                URL de la playlist
+              </label>
+              <input
+                value={playlistUrl}
+                onChange={(e) => setPlaylistUrl(e.target.value)}
+                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="https://open.spotify.com/playlist/..."
+              />
+            </div>
 
+            {/* Opciones */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block mb-1 font-medium text-slate-700">
+                  Nº canciones
+                </label>
+                <select
+                  value={count}
+                  onChange={(e) => setCount(Number(e.target.value))}
+                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option>3</option>
+                  <option>5</option>
+                  <option>10</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block mb-1 font-medium text-slate-700">
+                  Penalización (segundos)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={penalty}
+                  onChange={(e) => setPenalty(Number(e.target.value))}
+                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  onClick={fetchPlaylist}
+                  className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 transition text-white font-semibold rounded-lg shadow"
+                >
+                  Cargar canciones
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Juego */}
         {tracks && (
-          <div className="mt-6">
-            <Game tracks={tracks} token={token} apiBase={API} />
+          <div className="mt-8">
+            <Game tracks={tracks} penalty={penalty} token={token} apiBase={API} />
           </div>
         )}
-
       </div>
     </div>
   );
