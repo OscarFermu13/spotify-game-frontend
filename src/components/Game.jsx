@@ -234,20 +234,57 @@ export default function Game({ tracks, penalty, token, apiBase }) {
       )}
 
       {result && (
-        <div className="text-center mb-4">
+        <div className="text-center mb-6">
           {result.correct ? (
-            <div className="text-green-600 font-semibold text-lg">
-              ✅ ¡Correcto!
-            </div>
+            <>
+              <div className="text-green-600 font-semibold text-lg">
+                ✅ ¡Correcto!
+                <div className="mt-2 text-slate-800">
+                  La canción era:{" "}
+                  <span className="font-medium">
+                    {result.correctTrack.name} —{" "}
+                    {Array.isArray(result.correctTrack.artists)
+                      ? result.correctTrack.artists.map((a) => a.name).join(", ")
+                      : result.correctTrack.artists}
+                  </span>
+                </div>
+              </div>
+              {result.correctTrack.album?.images?.[0] && (
+                <img
+                  src={result.correctTrack.album.images[0].url}
+                  alt={result.correctTrack.name}
+                  className="mx-auto mt-3 w-40 h-40 rounded-lg shadow-lg"
+                />
+              )}
+            </>
           ) : (
             <div className="text-red-600 font-semibold text-lg">
-              ❌ Incorrecto. La canción era:
-              <span className="ml-2">{result.correctTrack.name} — {result.correctTrack.artists}</span>
+              ❌ Incorrecto.
+              <div className="mt-2 text-slate-800">
+                La canción era:{" "}
+                <span className="font-medium">
+                  {result.correctTrack.name} —{" "}
+                  {Array.isArray(result.correctTrack.artists)
+                    ? result.correctTrack.artists.map((a) => a.name).join(", ")
+                    : result.correctTrack.artists}
+                </span>
+              </div>
+              {result.correctTrack.album?.images?.[0] && (
+                <img
+                  src={result.correctTrack.album.images[0].url}
+                  alt={result.correctTrack.name}
+                  className="mx-auto mt-3 w-40 h-40 rounded-lg shadow-lg"
+                />
+              )}
             </div>
           )}
+
           <button
-            onClick={() => { setResult(null); next(); }}
-            className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            onClick={() => {
+              setResult(null);
+              next();
+            }}
+            className="mt-4 px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
             Continuar
           </button>
