@@ -87,6 +87,7 @@ export default function Game({ tracks, penalty, token, apiBase }) {
       trackId: current.id,
       name: current.name,
       artist: current.artists,
+      album: current.album,
       timeTaken: elapsedRef.current,
       skipped,
       guessed: guessedCorrect
@@ -100,7 +101,11 @@ export default function Game({ tracks, penalty, token, apiBase }) {
   const handlePass = async () => {
     if (playing) await pausePlay();
     stopTimerAndRecord(false, true);
-    next();
+
+    setResult({
+      correct: false,
+      correctTrack: current
+    });
   };
 
   useEffect(() => {
@@ -138,7 +143,8 @@ export default function Game({ tracks, penalty, token, apiBase }) {
         const updated = [...prev];
         updated[index] = {
           ...updated[index],
-          timeTaken: (updated[index]?.timeTaken || 0) + penalty
+          timeTaken: (updated[index]?.timeTaken || 0) + penalty,
+          userGuess: guess
         };
         return updated;
       });
@@ -217,19 +223,94 @@ export default function Game({ tracks, penalty, token, apiBase }) {
         <div className="text-center">
           <h3 className="text-xl font-bold mb-3 text-slate-800">Resumen</h3>
           <div className="mb-3 text-slate-700 font-medium">Tiempo total: {totalTime.toFixed(3)} s</div>
-          <ul className="text-left max-w-2xl mx-auto mb-4 bg-white p-4 rounded-lg shadow divide-y">
-            {perTrackTime.map((t, i) => (
-              <li key={i} className="py-1">
-                {t.name} — {t.artist} →{' '}
-                {t.skipped
-                  ? `${t.timeTaken.toFixed(3)}s (+${penalty}s) ⏭️ ❌`
-                  : t.guessed
-                    ? `${t.timeTaken.toFixed(3)}s ✅`
-                    : `${(t.timeTaken - penalty).toFixed(3)}s (+${penalty}s) ❌`}
-              </li>
-            ))}
-          </ul>
-          <a href="/" className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Volver a jugar</a>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+            {perTrackTime.map((t, i) => {
+              const correctArtists = Array.isArray(t.artist)
+                ? t.artist.map((a) => a.name).join(', ')
+                : t.artist;
+              const userGuessArtists = t.userGuess?.artists
+                ? t.userGuess.artists.map((a) => a.name).join(', ')
+                : null;
+
+              return (
+                <div
+                  key={i}
+                  className={`p-4 rounded-xl shadow-lg border ${t.guessed ? 'border-green-400 bg-green-50' : 'border-red-400 bg-red-50'
+                    }`}
+                >
+                  <div className="flex items-center gap-4">
+                    {t.userGuess?.album?.images?.[0] ? (
+                      <img
+                        src={t.userGuess.album.images[0].url}
+                        alt={t.userGuess.name}
+                        className="w-20 h-20 rounded-lg shadow"
+                      />
+                    ) : (
+                      t.guessed ? (
+                        <img
+                          src={t.album.images[0].url}
+                          alt={t.name}
+                          className="w-20 h-20 rounded-lg shadow"
+                        />
+                      ) : (
+                        <div className="w-20 h-20 bg-slate-200 rounded-lg" />
+                      )
+                    )}
+
+                    <div className="flex-1">
+                      <div className="text-sm text-slate-600">Tu respuesta:</div>
+                      {t.userGuess ? (
+                        <div className="font-medium">
+                          {t.userGuess.name} — {userGuessArtists}
+                        </div>
+                      ) : (
+                        t.guessed ? (
+                          <div className="font-medium">{t.name} — {correctArtists}</div>
+                        ) : (
+                          <div className="italic text-slate-500">No respondiste</div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                  
+                  {!t.guessed && (
+                    <div className="mt-3 flex items-center gap-4">
+                      {t.album?.images?.[0] && (
+                        <img
+                          src={t.album.images[0].url}
+                          alt={t.name}
+                          className="w-20 h-20 rounded-lg shadow"
+                        />
+                      )}
+                      <div className="flex-1">
+                        <div className="text-sm text-slate-600">Correcta era:</div>
+                        <div className="font-medium">
+                          {t.name} — {correctArtists}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-3 text-slate-700">
+                    {t.skipped
+                      ? `Tiempo: ${t.timeTaken.toFixed(3)}s (+ ${penalty}s por saltar) ⏭️`
+                      : t.guessed
+                        ? `Tiempo: ${t.timeTaken.toFixed(3)}s ✅`
+                        : `Tiempo: ${(t.timeTaken - penalty).toFixed(3)}s (+${penalty}s penalización) ❌`}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <a href="/" className="inline-block mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+            Volver a jugar
+          </a>
+
+          <a href="#" className="inline-block mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+            Reta a tus amigos
+          </a>
         </div>
       )}
 

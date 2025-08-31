@@ -7,10 +7,15 @@ const API = 'http://localhost:4000';
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || null);
   const [user, setUser] = useState(null);
+
   const [playlistUrl, setPlaylistUrl] = useState('');
   const [count, setCount] = useState(5);
   const [tracks, setTracks] = useState(null);
   const [penalty, setPenalty] = useState(5);
+
+  const [playlists, setPlaylists] = useState([]);
+  const [showPlaylists, setShowPlaylists] = useState(false);
+
   const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
@@ -37,6 +42,21 @@ function App() {
     window.location.href = `${API}/auth/login`;
   };
 
+  useEffect(() => {
+    if (!token) return;
+    const fetchPlaylists = async () => {
+      try {
+        const resp = await axios.get(`${API}/api/me/playlists`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setPlaylists(resp.data.playlists || []);
+      } catch (e) {
+        console.error('Error fetching user playlists', e);
+      }
+    };
+    fetchPlaylists();
+  }, [token]);
+
   const fetchPlaylist = async () => {
     try {
       const resp = await axios.get(`${API}/api/playlist`, {
@@ -49,6 +69,11 @@ function App() {
       alert('Error obteniendo playlist. Asegúrate de estar autenticado y que la URL es correcta.');
       console.error(e);
     }
+  };
+
+  const handlePlaylistSelect = (playlistUrl) => {
+    setPlaylistUrl(playlistUrl);
+    setShowPlaylists(false);
   };
 
   return (
@@ -78,6 +103,7 @@ function App() {
                 localStorage.removeItem('token');
                 setToken(null);
                 setTracks(null);
+                setPlaylists([]);
               }}
               className="px-3 py-1 border rounded-lg text-slate-600 hover:bg-slate-100 transition"
             >
@@ -88,6 +114,48 @@ function App() {
 
         {!playing && (
           <div className="space-y-4">
+            {/* Playlists del usuario */}
+            {playlists.length > 0 && (
+              <div className="mb-6">
+                <button
+                  className="w-full px-4 py-2 bg-blue-100 hover:bg-blue-200 rounded-lg text-left font-semibold text-slate-800 flex justify-between items-center shadow-sm transition"
+                  onClick={() => setShowPlaylists(!showPlaylists)}
+                >
+                  Tus playlists
+                  <span className="text-sm">{showPlaylists ? '▲' : '▼'}</span>
+                </button>
+
+                {showPlaylists && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 max-h-64 overflow-y-auto">
+                    {playlists.map((pl) => (
+                      <div
+                        key={pl.id}
+                        onClick={() => handlePlaylistSelect(pl.external_urls.spotify)}
+                        className="flex items-center gap-4 p-3 bg-white rounded-xl shadow hover:shadow-md cursor-pointer transition transform hover:-translate-y-0.5"
+                      >
+                        {pl.images?.[0] ? (
+                          <img
+                            src={pl.images[0].url}
+                            alt={pl.name}
+                            className="w-14 h-14 rounded-lg object-cover shadow-sm"
+                          />
+                        ) : (
+                          <div className="w-14 h-14 bg-slate-200 rounded-lg" />
+                        )}
+
+                        <div className="flex-1">
+                          <div className="font-medium text-slate-800 truncate">{pl.name}</div>
+                          <div className="text-sm text-slate-500">{pl.tracks.total} canciones</div>
+                        </div>
+
+                        <div className="text-sm text-slate-400">▶️</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* URL Playlist */}
             <div>
               <label className="block mb-1 font-medium text-slate-700">
