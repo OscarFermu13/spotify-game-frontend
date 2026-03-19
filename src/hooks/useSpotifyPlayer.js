@@ -1,62 +1,87 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
+let playerInstance = null;
+let initPromise = null;
+
 export default function useSpotifyPlayer(apiBase, token) {
-  const [player, setPlayer] = useState(null);
   const [deviceId, setDeviceId] = useState(null);
   const [ready, setReady] = useState(false);
+  const [player, setPlayer] = useState(null);
 
   useEffect(() => {
-    if (!token) return;
+    if (playerInstance) {
+      setPlayer(playerInstance);
+      return;
+    }
 
-    const load = async () => {
-      // pedir access_token real al backend
-      const resp = await axios.get(`${apiBase}/api/me/token`, {
-        headers: { Authorization: `Bearer ${token}` }
+    if (initPromise) {
+      initPromise.then((p) => {
+        if (p) setPlayer(p);
       });
-      const accessToken = resp.data.accessToken;
+      return;
+    }
 
-      window.onSpotifyWebPlaybackSDKReady = () => {
+    const getTokenHeaders = () =>
+      token ? { Authorization: `Bearer ${token}` } : {};
+
+    const initPlayer = () => {
+      initPromise = new Promise((resolve) => {
         const p = new window.Spotify.Player({
-          name: 'Spotify Quiz Player',
-          getOAuthToken: async cb => {
+          name: 'Spotify Quiz',
+          getOAuthToken: async (cb) => {
             try {
               const r = await axios.get(`${apiBase}/api/me/token`, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: getTokenHeaders(),
               });
               cb(r.data.accessToken);
             } catch (e) {
               console.error('Token renew failed', e);
             }
           },
-          volume: 0.5
+          volume: 0.5,
         });
 
-        // listeners
         p.addListener('ready', ({ device_id }) => {
-          console.log('Player listo con device_id', device_id);
+          console.log('Player listo, device_id:', device_id);
+          playerInstance = p;
           setDeviceId(device_id);
           setReady(true);
+          setPlayer(p);
+          resolve(p);
         });
+
         p.addListener('not_ready', ({ device_id }) => {
-          console.log('Device offline', device_id);
+          console.warn('Device offline', device_id);
+          setReady(false);
+          setDeviceId(null);
         });
-        p.addListener('initialization_error', e => console.error(e));
-        p.addListener('authentication_error', e => console.error(e));
-        p.addListener('account_error', e => console.error(e));
+
+        p.addListener('initialization_error', ({ message }) => {
+          console.error('initialization_error:', message);
+          resolve(null);
+        });
+        p.addListener('authentication_error', ({ message }) => {
+          console.error('authentication_error:', message);
+          resolve(null);
+        });
+        p.addListener('account_error', ({ message }) => {
+          console.error('account_error — cuenta Premium requerida:', message);
+          resolve(null);
+        });
 
         p.connect();
-        setPlayer(p);
-      };
+      });
 
-      // si el script ya está cargado
-      if (window.Spotify) {
-        window.onSpotifyWebPlaybackSDKReady();
-      }
+      return initPromise;
     };
 
-    load();
-  }, [token, apiBase]);
+    if (window.Spotify) {
+      initPlayer();
+    } else {
+      window.onSpotifyWebPlaybackSDKReady = initPlayer;
+    }
+  }, [apiBase, token]);
 
   return { player, deviceId, ready };
 }

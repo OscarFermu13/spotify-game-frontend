@@ -1,98 +1,134 @@
-import React, { useEffect, useRef, useState } from 'react';
+// src/components/Game.jsx
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import useSpotifyPlayer from '../hooks/useSpotifyPlayer';
 
-export default function Game({ tracks, penalty, token, apiBase }) {
+const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || 'http://127.0.0.1:5173';
+
+export default function Game({ tracks, penalty, token, apiBase, onFinish, sessionId }) {
   const { player, deviceId, ready } = useSpotifyPlayer(apiBase, token);
 
   const [index, setIndex] = useState(0);
   const [perTrackTime, setPerTrackTime] = useState([]);
   const [playing, setPlaying] = useState(false);
 
-  const playStartRef = useRef(null);   // cuando empieza el play
-  const elapsedRef = useRef(0);        // acumulador por canción
-  const [currentTime, setCurrentTime] = useState(0); // estado que pintamos en pantalla
+  const playStartRef = useRef(null);
+  const elapsedRef = useRef(0);
+  const [currentTime, setCurrentTime] = useState(0);
   const [summaryShown, setSummaryShown] = useState(false);
 
   const [guessing, setGuessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [result, setResult] = useState(null);
+  const [playError, setPlayError] = useState(null);
 
   const current = tracks[index];
 
-  // Intervalo para actualizar el contador visible
+  // Headers de auth: JWT si existe, vacío si la auth va por cookie HttpOnly
+  const authHeaders = useCallback(
+    () => (token ? { Authorization: `Bearer ${token}` } : {}),
+    [token]
+  );
+
+  // ── Cronómetro con requestAnimationFrame ─────────────────────────────────
+  const rafRef = useRef(null);
+
   useEffect(() => {
-    let interval = null;
     if (playing) {
-      interval = setInterval(() => {
+      const tick = () => {
         if (playStartRef.current) {
-          const elapsed = elapsedRef.current + (Date.now() - playStartRef.current) / 1000;
-          setCurrentTime(elapsed);
+          setCurrentTime(
+            elapsedRef.current + (Date.now() - playStartRef.current) / 1000
+          );
         }
-      }, 1); // refresco cada 1ms
+        rafRef.current = requestAnimationFrame(tick);
+      };
+      rafRef.current = requestAnimationFrame(tick);
     } else {
-      clearInterval(interval);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
   }, [playing]);
 
+  // ── Tiempo total (memoizado) ──────────────────────────────────────────────
+  const totalTime = useMemo(
+    () => perTrackTime.reduce((acc, t) => acc + t.timeTaken + (t.skipped ? penalty : 0), 0),
+    [perTrackTime, penalty]
+  );
+
+  // ── Reproducción (a través del proxy backend) ─────────────────────────────
   const startPlay = async () => {
     if (!ready || !deviceId) {
-      alert('El reproductor no está listo. ¿Eres Premium?');
+      alert('El reproductor no está listo. ¿Tienes cuenta Premium?');
       return;
     }
+
     if (!playing) {
+      elapsedRef.current = 0;
       playStartRef.current = Date.now();
       setPlaying(true);
-      elapsedRef.current = 0;
+      setPlayError(null);
     }
 
-    // reproducir canción completa con SDK
-    await axios.put(
-      `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
-      { uris: [current.uri] },
-      {
-        headers: {
-          Authorization: `Bearer ${(await axios.get(`${apiBase}/api/me/token`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })).data.accessToken
-            }`
-        }
-      }
-    );
+    try {
+      await axios.put(
+        `${apiBase}/api/spotify/play`,
+        { device_id: deviceId, uris: [current.uri] },
+        { headers: authHeaders() }
+      );
+    } catch (e) {
+      console.error('Error reproduciendo', e.response?.data || e.message);
+      setPlaying(false);
+      playStartRef.current = null;
+      setPlayError('No se pudo reproducir la canción. Inténtalo de nuevo.');
+    }
   };
 
   const pausePlay = async () => {
     if (!playing) return;
-    setPlaying(false);
 
-    // acumula el tiempo hasta ahora
     if (playStartRef.current) {
       elapsedRef.current += (Date.now() - playStartRef.current) / 1000;
       playStartRef.current = null;
     }
+    setPlaying(false);
 
-    await player.pause();
+    try {
+      await player.pause();
+    } catch (e) {
+      console.error('Error pausando', e);
+    }
   };
 
+  // ── Registro de resultado por canción ─────────────────────────────────────
   const stopTimerAndRecord = (guessedCorrect, skipped = false) => {
     if (playStartRef.current) {
       elapsedRef.current += (Date.now() - playStartRef.current) / 1000;
       playStartRef.current = null;
     }
 
-    const arr = [...perTrackTime];
-    arr[index] = {
-      trackId: current.id,
-      name: current.name,
-      artist: current.artists,
-      album: current.album,
-      timeTaken: elapsedRef.current,
-      skipped,
-      guessed: guessedCorrect
-    };
-    setPerTrackTime(arr);
+    setPerTrackTime((prev) => {
+      const arr = [...prev];
+      arr[index] = {
+        trackId: current.id,
+        name: current.name,
+        artist: current.artists,
+        album: current.album,
+        timeTaken: elapsedRef.current,
+        skipped,
+        guessed: guessedCorrect,
+      };
+      return arr;
+    });
 
     elapsedRef.current = 0;
     setCurrentTime(0);
@@ -101,32 +137,8 @@ export default function Game({ tracks, penalty, token, apiBase }) {
   const handlePass = async () => {
     if (playing) await pausePlay();
     stopTimerAndRecord(false, true);
-
-    setResult({
-      correct: false,
-      correctTrack: current
-    });
+    setResult({ correct: false, correctTrack: current });
   };
-
-  useEffect(() => {
-    const delayDebounce = setTimeout(async () => {
-      if (searchTerm.length > 2) {
-        const accessToken = (await axios.get(`${apiBase}/api/me/token`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })).data.accessToken;
-
-        const res = await axios.get(
-          `https://api.spotify.com/v1/search?q=${encodeURIComponent(searchTerm)}&type=track&limit=5`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
-        setSearchResults(res.data.tracks.items);
-      } else {
-        setSearchResults([]);
-      }
-    }, 400);
-
-    return () => clearTimeout(delayDebounce);
-  }, [searchTerm, apiBase, token]);
 
   const handleGuessClick = async () => {
     if (playing) await pausePlay();
@@ -134,61 +146,118 @@ export default function Game({ tracks, penalty, token, apiBase }) {
   };
 
   const handleSelectGuess = (guess) => {
-    let guessedCorrect = guess.name === current.name;
+    const guessedCorrect = guess.name === current.name;
     stopTimerAndRecord(guessedCorrect, false);
 
-    // penalización si falla
     if (!guessedCorrect) {
       setPerTrackTime((prev) => {
         const updated = [...prev];
         updated[index] = {
           ...updated[index],
           timeTaken: (updated[index]?.timeTaken || 0) + penalty,
-          userGuess: guess
+          userGuess: guess,
         };
         return updated;
       });
     }
 
-    setResult({
-      correct: guessedCorrect,
-      correctTrack: current
-    });
-
+    setResult({ correct: guessedCorrect, correctTrack: current });
     setGuessing(false);
     setSearchTerm('');
     setSearchResults([]);
   };
 
   const next = () => {
+    setResult(null);
     if (index + 1 < tracks.length) {
-      setIndex(index + 1);
+      setIndex((i) => i + 1);
     } else {
       setSummaryShown(true);
     }
   };
 
-  const totalTime = perTrackTime.reduce(
-    (acc, t) => acc + t.timeTaken + (t.skipped ? penalty : 0),
-    0
-  );
+  // ── Búsqueda con debounce (a través del proxy backend) ────────────────────
+  useEffect(() => {
+    if (searchTerm.length <= 2) {
+      setSearchResults([]);
+      return;
+    }
 
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await axios.get(`${apiBase}/api/spotify/search`, {
+          headers: authHeaders(),
+          params: { q: searchTerm, type: 'track', limit: 5 },
+        });
+        setSearchResults(res.data.tracks.items);
+      } catch (e) {
+        console.error('Error buscando', e);
+      }
+    }, 400);
+
+    return () => clearTimeout(timeout);
+  }, [searchTerm, apiBase, authHeaders]);
+
+  // ── Callback al terminar ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (!summaryShown) return;
+    if (typeof onFinish !== 'function') return;
+
+    const perTrack = perTrackTime.map((t) => ({
+      trackId: t.trackId,
+      guessed: !!t.guessed,
+      timeTaken: Number(t.timeTaken || 0),
+    }));
+
+    onFinish({ totalTime, perTrack });
+  }, [summaryShown]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="p-6 bg-slate-50 rounded-xl shadow-lg">
       {!summaryShown ? (
         <>
           <div className="mb-4 text-center">
-            <h2 className="text-xl font-semibold text-slate-800">Canción {index + 1} / {tracks.length}</h2>
+            <h2 className="text-xl font-semibold text-slate-800">
+              Canción {index + 1} / {tracks.length}
+            </h2>
           </div>
+
+          {playError && (
+            <div className="mb-3 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center">
+              {playError}
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-3 justify-center mb-4">
             {playing ? (
-              <button onClick={pausePlay} className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition">Pausar</button>
+              <button
+                onClick={pausePlay}
+                className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition"
+              >
+                Pausar
+              </button>
             ) : (
-              <button onClick={startPlay} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Reproducir</button>
+              <button
+                onClick={startPlay}
+                disabled={!ready}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {ready ? 'Reproducir' : 'Cargando...'}
+              </button>
             )}
-            <button onClick={handlePass} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">Pasar</button>
-            <button onClick={handleGuessClick} className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">Adivinar</button>
+            <button
+              onClick={handlePass}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+            >
+              Pasar
+            </button>
+            <button
+              onClick={handleGuessClick}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+            >
+              Adivinar
+            </button>
           </div>
 
           {guessing && (
@@ -199,6 +268,7 @@ export default function Game({ tracks, penalty, token, apiBase }) {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Escribe el nombre de la canción..."
                 className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                autoFocus
               />
               <ul className="mt-2 border rounded divide-y bg-white shadow">
                 {searchResults.map((track) => (
@@ -215,14 +285,23 @@ export default function Game({ tracks, penalty, token, apiBase }) {
           )}
 
           <div className="flex justify-between mt-4 text-slate-700">
-            <div>Tiempo actual: <span className="font-medium">{currentTime.toFixed(3)} s</span></div>
-            <div>Tiempo total: <span className="font-medium">{totalTime.toFixed(3)} s</span></div>
+            <div>
+              Tiempo actual:{' '}
+              <span className="font-medium">{currentTime.toFixed(3)} s</span>
+            </div>
+            <div>
+              Tiempo total:{' '}
+              <span className="font-medium">{totalTime.toFixed(3)} s</span>
+            </div>
           </div>
         </>
       ) : (
+        // ── Pantalla de resumen ──────────────────────────────────────────────
         <div className="text-center">
           <h3 className="text-xl font-bold mb-3 text-slate-800">Resumen</h3>
-          <div className="mb-3 text-slate-700 font-medium">Tiempo total: {totalTime.toFixed(3)} s</div>
+          <div className="mb-3 text-slate-700 font-medium">
+            Tiempo total: {totalTime.toFixed(3)} s
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
             {perTrackTime.map((t, i) => {
@@ -236,8 +315,11 @@ export default function Game({ tracks, penalty, token, apiBase }) {
               return (
                 <div
                   key={i}
-                  className={`p-4 rounded-xl shadow-lg border ${t.guessed ? 'border-green-400 bg-green-50' : 'border-red-400 bg-red-50'
-                    }`}
+                  className={`p-4 rounded-xl shadow-lg border ${
+                    t.guessed
+                      ? 'border-green-400 bg-green-50'
+                      : 'border-red-400 bg-red-50'
+                  }`}
                 >
                   <div className="flex items-center gap-4">
                     {t.userGuess?.album?.images?.[0] ? (
@@ -246,44 +328,42 @@ export default function Game({ tracks, penalty, token, apiBase }) {
                         alt={t.userGuess.name}
                         className="w-20 h-20 rounded-lg shadow"
                       />
+                    ) : t.guessed ? (
+                      <img
+                        src={t.album?.images?.[0]?.url}
+                        alt={t.name}
+                        className="w-20 h-20 rounded-lg shadow"
+                      />
                     ) : (
-                      t.guessed ? (
-                        <img
-                          src={t.album.images[0].url}
-                          alt={t.name}
-                          className="w-20 h-20 rounded-lg shadow"
-                        />
-                      ) : (
-                        <div className="w-20 h-20 bg-slate-200 rounded-lg" />
-                      )
+                      <div className="w-20 h-20 bg-slate-200 rounded-lg flex-shrink-0" />
                     )}
 
-                    <div className="flex-1">
+                    <div className="flex-1 text-left">
                       <div className="text-sm text-slate-600">Tu respuesta:</div>
                       {t.userGuess ? (
                         <div className="font-medium">
                           {t.userGuess.name} — {userGuessArtists}
                         </div>
+                      ) : t.guessed ? (
+                        <div className="font-medium">
+                          {t.name} — {correctArtists}
+                        </div>
                       ) : (
-                        t.guessed ? (
-                          <div className="font-medium">{t.name} — {correctArtists}</div>
-                        ) : (
-                          <div className="italic text-slate-500">No respondiste</div>
-                        )
+                        <div className="italic text-slate-500">No respondiste</div>
                       )}
                     </div>
                   </div>
-                  
+
                   {!t.guessed && (
                     <div className="mt-3 flex items-center gap-4">
                       {t.album?.images?.[0] && (
                         <img
                           src={t.album.images[0].url}
                           alt={t.name}
-                          className="w-20 h-20 rounded-lg shadow"
+                          className="w-20 h-20 rounded-lg shadow flex-shrink-0"
                         />
                       )}
-                      <div className="flex-1">
+                      <div className="flex-1 text-left">
                         <div className="text-sm text-slate-600">Correcta era:</div>
                         <div className="font-medium">
                           {t.name} — {correctArtists}
@@ -292,40 +372,52 @@ export default function Game({ tracks, penalty, token, apiBase }) {
                     </div>
                   )}
 
-                  <div className="mt-3 text-slate-700">
+                  <div className="mt-3 text-slate-700 text-sm">
                     {t.skipped
-                      ? `Tiempo: ${t.timeTaken.toFixed(3)}s (+ ${penalty}s por saltar) ⏭️`
+                      ? `Tiempo: ${t.timeTaken.toFixed(3)}s (+${penalty}s por saltar) ⏭️`
                       : t.guessed
-                        ? `Tiempo: ${t.timeTaken.toFixed(3)}s ✅`
-                        : `Tiempo: ${(t.timeTaken - penalty).toFixed(3)}s (+${penalty}s penalización) ❌`}
+                      ? `Tiempo: ${t.timeTaken.toFixed(3)}s ✅`
+                      : `Tiempo: ${(t.timeTaken - penalty).toFixed(3)}s (+${penalty}s penalización) ❌`}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <a href="/" className="inline-block mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-            Volver a jugar
-          </a>
-
-          <a href="#" className="inline-block mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-            Reta a tus amigos
-          </a>
+          <div className="flex gap-3 justify-center mt-6">
+            <a
+              href="/"
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            >
+              Volver a jugar
+            </a>
+            {sessionId && (
+              <button
+                onClick={() =>
+                  navigator.clipboard.writeText(`${FRONTEND_URL}/session/${sessionId}`)
+                }
+                className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition"
+              >
+                🎯 Reta a tus amigos
+              </button>
+            )}
+          </div>
         </div>
       )}
 
+      {/* ── Feedback tras adivinar o pasar ──────────────────────────────────── */}
       {result && (
-        <div className="text-center mb-6">
+        <div className="text-center mb-6 mt-4">
           {result.correct ? (
             <>
               <div className="text-green-600 font-semibold text-lg">
                 ✅ ¡Correcto!
                 <div className="mt-2 text-slate-800">
-                  La canción era:{" "}
+                  La canción era:{' '}
                   <span className="font-medium">
-                    {result.correctTrack.name} —{" "}
+                    {result.correctTrack.name} —{' '}
                     {Array.isArray(result.correctTrack.artists)
-                      ? result.correctTrack.artists.map((a) => a.name).join(", ")
+                      ? result.correctTrack.artists.map((a) => a.name).join(', ')
                       : result.correctTrack.artists}
                   </span>
                 </div>
@@ -342,11 +434,11 @@ export default function Game({ tracks, penalty, token, apiBase }) {
             <div className="text-red-600 font-semibold text-lg">
               ❌ Incorrecto.
               <div className="mt-2 text-slate-800">
-                La canción era:{" "}
+                La canción era:{' '}
                 <span className="font-medium">
-                  {result.correctTrack.name} —{" "}
+                  {result.correctTrack.name} —{' '}
                   {Array.isArray(result.correctTrack.artists)
-                    ? result.correctTrack.artists.map((a) => a.name).join(", ")
+                    ? result.correctTrack.artists.map((a) => a.name).join(', ')
                     : result.correctTrack.artists}
                 </span>
               </div>
@@ -361,10 +453,7 @@ export default function Game({ tracks, penalty, token, apiBase }) {
           )}
 
           <button
-            onClick={() => {
-              setResult(null);
-              next();
-            }}
+            onClick={next}
             className="mt-4 px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
             Continuar
