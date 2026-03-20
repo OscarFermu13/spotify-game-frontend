@@ -26,10 +26,13 @@ function App() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const resp = await axios.get(`${API}/api/me/playlists`);
-        setPlaylists(resp.data.playlists || []);
+        const [meResp, playlistsResp] = await Promise.all([
+          axios.get(`${API}/api/me`),
+          axios.get(`${API}/api/me/playlists`),
+        ]);
+        setUser({ name: meResp.data.displayName || meResp.data.spotifyId });
+        setPlaylists(playlistsResp.data.playlists || []);
         setIsAuthenticated(true);
-        setUser({ name: 'Usuario' });
       } catch {
         setIsAuthenticated(false);
       } finally {
@@ -39,8 +42,11 @@ function App() {
     checkAuth();
   }, []);
 
-  const handleLogin = () => {
-    window.location.href = `${API}/auth/login`;
+  const handleLogin = (switchAccount = false) => {
+    const url = switchAccount
+      ? `${API}/auth/login?switch_account=true`
+      : `${API}/auth/login`;
+    window.location.href = url;
   };
 
   const handleLogout = () => {
@@ -106,12 +112,20 @@ function App() {
             <p className="mb-4 text-slate-600">
               Conéctate con Spotify para poder reproducir canciones con Web Playback SDK.
             </p>
-            <button
-              onClick={handleLogin}
-              className="px-6 py-2 bg-green-600 hover:bg-green-700 transition text-white font-semibold rounded-lg shadow"
-            >
-              Conectar con Spotify
-            </button>
+            <div className="flex flex-col items-center gap-2">
+              <button
+                onClick={() => handleLogin(false)}
+                className="px-6 py-2 bg-green-600 hover:bg-green-700 transition text-white font-semibold rounded-lg shadow"
+              >
+                Conectar con Spotify
+              </button>
+              <button
+                onClick={() => handleLogin(true)}
+                className="text-sm text-slate-500 hover:text-slate-700 underline underline-offset-2 transition"
+              >
+                Usar otra cuenta
+              </button>
+            </div>
           </div>
         ) : (
           <div className="flex items-center justify-between mb-6 bg-slate-50 p-3 rounded-lg border">
@@ -119,12 +133,20 @@ function App() {
               ✅ Conectado como{' '}
               <span className="font-semibold">{user?.name}</span>
             </p>
-            <button
-              onClick={handleLogout}
-              className="px-3 py-1 border rounded-lg text-slate-600 hover:bg-slate-100 transition"
-            >
-              Cerrar sesión
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleLogin(true)}
+                className="px-3 py-1 text-sm text-slate-500 hover:text-slate-700 underline underline-offset-2 transition"
+              >
+                Cambiar cuenta
+              </button>
+              <button
+                onClick={handleLogout}
+                className="px-3 py-1 border rounded-lg text-slate-600 hover:bg-slate-100 transition"
+              >
+                Cerrar sesión
+              </button>
+            </div>
           </div>
         )}
 
