@@ -271,6 +271,23 @@ function App() {
         </div>
       </div>
 
+      {/* ── Leaderboards ── */}
+      <div className="max-w-3xl mx-auto my-8">
+        <a
+          href="/leaderboards"
+          className="flex items-center justify-between w-full bg-white p-5 rounded-2xl shadow-lg hover:shadow-xl transition group"
+        >
+          <div className="flex items-center gap-4">
+            <span className="text-3xl">🏆</span>
+            <div>
+              <div className="font-bold text-slate-800 text-lg">Leaderboards</div>
+              <div className="text-sm text-slate-500">Rankings globales, por sesión y tu historial</div>
+            </div>
+          </div>
+          <span className="text-slate-400 group-hover:text-slate-600 text-xl transition">→</span>
+        </a>
+      </div>
+
       {/* ── Únete a una sesión ── */}
       <div className="max-w-3xl mx-auto my-8 bg-white p-8 rounded-2xl shadow-lg">
         <h2 className="text-xl font-bold mb-6 text-slate-800">

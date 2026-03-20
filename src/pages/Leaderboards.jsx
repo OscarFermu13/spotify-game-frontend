@@ -17,6 +17,18 @@ function formatTime(seconds) {
   return `${seconds.toFixed(2)}s`;
 }
 
+// Extract a short display name from a Spotify playlist URL.
+// "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M?si=abc" → "37i9dQZF1DXcBWIGoYBM5M"
+function playlistName(url) {
+  if (!url) return null;
+  try {
+    const id = url.split('playlist/')[1]?.split('?')[0];
+    return id ? `Playlist ${id.slice(0, 8)}…` : url;
+  } catch {
+    return url;
+  }
+}
+
 function medal(rank) {
   if (rank === 1) return '🥇';
   if (rank === 2) return '🥈';
@@ -123,9 +135,21 @@ function SessionTab({ sessionId: initialId }) {
 
       {data && !error && (
         <>
-          <p className="text-sm text-slate-500 mb-4">
-            {data.trackCount} canciones · {data.leaderboard.length} jugadores
-          </p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-4">
+            <p className="text-sm text-slate-500">
+              {data.trackCount} canciones · {data.leaderboard.length} jugadores
+            </p>
+            {data.playlistUrl && (
+              <a
+                href={data.playlistUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-green-600 hover:text-green-700 underline underline-offset-2 transition"
+              >
+                🎵 Ver playlist en Spotify
+              </a>
+            )}
+          </div>
           {data.leaderboard.length === 0 ? (
             <p className="text-center text-slate-500 py-8">
               Nadie ha completado esta sesión todavía.
@@ -240,6 +264,7 @@ function PersonalTab() {
           <thead>
             <tr className="text-left text-slate-500 border-b">
               <th className="pb-2 pr-4">Fecha</th>
+              <th className="pb-2 pr-4">Playlist</th>
               <th className="pb-2 pr-4 text-right">Tiempo</th>
               <th className="pb-2 pr-4 text-right">Aciertos</th>
               <th className="pb-2 text-right">Precisión</th>
@@ -253,14 +278,30 @@ function PersonalTab() {
                 className="hover:bg-slate-50 cursor-pointer transition"
                 title="Ver ranking de esta sesión"
               >
-                <td className="py-3 pr-4 text-slate-600">
+                <td className="py-3 pr-4 text-slate-600 whitespace-nowrap">
                   {new Date(g.playedAt).toLocaleDateString('es-ES', {
                     day: '2-digit',
                     month: 'short',
                     year: 'numeric',
                   })}
                 </td>
-                <td className="py-3 pr-4 text-right font-medium text-slate-800">
+                <td className="py-3 pr-4 max-w-[160px]">
+                  {g.playlistUrl ? (
+                    <a
+                      href={g.playlistUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-green-600 hover:text-green-700 underline underline-offset-2 transition text-xs truncate block"
+                      title={g.playlistUrl}
+                    >
+                      🎵 {playlistName(g.playlistUrl)}
+                    </a>
+                  ) : (
+                    <span className="text-slate-400 text-xs">—</span>
+                  )}
+                </td>
+                <td className="py-3 pr-4 text-right font-medium text-slate-800 whitespace-nowrap">
                   {formatTime(g.totalTime)}
                 </td>
                 <td className="py-3 pr-4 text-right text-slate-600">

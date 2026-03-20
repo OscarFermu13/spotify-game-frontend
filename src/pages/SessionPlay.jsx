@@ -54,7 +54,7 @@ export default function SessionPlay() {
 
   const handleFinish = async ({ totalTime, perTrack }) => {
     setFinished(true);
- 
+
     // Save results to backend
     if (gameId) {
       try {
@@ -122,16 +122,24 @@ export default function SessionPlay() {
           <h1 className="text-3xl font-extrabold text-slate-800 mb-1">
             🎧 Spotify Quiz
           </h1>
+        </div>
+        <div className="flex items-center justify-between mb-6">
           <p className="text-slate-500 text-sm">
             Sesión creada por{' '}
             <span className="font-semibold text-slate-700">{ownerName}</span>
             {' · '}
             {tracks.length} {tracks.length === 1 ? 'canción' : 'canciones'}
           </p>
+          <a
+            href="/"
+            className="text-sm text-slate-500 hover:text-slate-700 transition"
+          >
+            ← Volver
+          </a>
         </div>
 
         {/* Juego */}
-       <Game
+        <Game
           tracks={tracks}
           penalty={DEFAULT_PENALTY}
           token={null}
@@ -140,7 +148,7 @@ export default function SessionPlay() {
           sessionId={sessionId}
           onFinish={handleFinish}
         />
- 
+
         {/* Show leaderboard button once game is finished */}
         {finished && (
           <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
