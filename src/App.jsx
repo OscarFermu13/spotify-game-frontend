@@ -11,6 +11,7 @@ function App() {
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
+  const [authChecking, setAuthChecking] = useState(true); // true mientras verifica la cookie
 
   const [playlistUrl, setPlaylistUrl] = useState('');
   const [count, setCount] = useState(5);
@@ -19,7 +20,7 @@ function App() {
 
   const [playlists, setPlaylists] = useState([]);
   const [showPlaylists, setShowPlaylists] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // true mientras crea/une sesión
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -31,6 +32,8 @@ function App() {
         setUser({ name: 'Usuario' });
       } catch {
         setIsAuthenticated(false);
+      } finally {
+        setAuthChecking(false);
       }
     };
     checkAuth();
@@ -77,6 +80,19 @@ function App() {
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
+
+  // Pantalla de carga mientras se verifica la cookie — evita un flash
+  // del botón "Conectar con Spotify" para usuarios ya autenticados
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-lg text-xl font-semibold text-slate-600 animate-pulse">
+          Cargando...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 p-6">
       <div className="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-lg">
@@ -172,7 +188,8 @@ function App() {
             <input
               value={playlistUrl}
               onChange={(e) => setPlaylistUrl(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              disabled={loading}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
               placeholder="https://open.spotify.com/playlist/..."
             />
           </div>
@@ -186,7 +203,8 @@ function App() {
               <select
                 value={count}
                 onChange={(e) => setCount(Number(e.target.value))}
-                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                disabled={loading}
+                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
               >
                 <option>3</option>
                 <option>5</option>
@@ -203,17 +221,28 @@ function App() {
                 min="1"
                 value={penalty}
                 onChange={(e) => setPenalty(Number(e.target.value))}
-                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                disabled={loading}
+                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
               />
             </div>
 
             <div className="flex items-end">
               <button
                 onClick={createSession}
-                disabled={loading}
+                disabled={loading || !isAuthenticated}
                 className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 transition text-white font-semibold rounded-lg shadow disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Cargando...' : 'Cargar canciones'}
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    Creando...
+                  </span>
+                ) : (
+                  'Cargar canciones'
+                )}
               </button>
             </div>
           </div>
@@ -233,14 +262,15 @@ function App() {
             <input
               value={joinInput}
               onChange={(e) => setJoinInput(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              disabled={loading}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
               placeholder="cmabcxyz123..."
             />
           </div>
           <div className="flex items-end">
             <button
               onClick={joinSession}
-              disabled={!joinInput.trim()}
+              disabled={loading || !joinInput.trim() || !isAuthenticated}
               className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 transition text-white font-semibold rounded-lg shadow disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Jugar
