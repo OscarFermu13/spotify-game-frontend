@@ -177,6 +177,7 @@ export default function Game({ tracks, penalty, token, apiBase, onFinish, sessio
     }
     setConfirmingPass(false);
     setResult(null);
+    setGuessing(false);
     if (index + 1 < tracks.length) {
       setIndex((i) => i + 1);
     } else {
@@ -420,25 +421,6 @@ export default function Game({ tracks, penalty, token, apiBase, onFinish, sessio
                   </div>
                 );
               })}
-            </div>
-
-            <div className="flex gap-3 justify-center mt-6">
-              <a
-                href="/"
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-              >
-                Volver a jugar
-              </a>
-              {sessionId && (
-                <button
-                  onClick={() =>
-                    navigator.clipboard.writeText(`${FRONTEND_URL}/session/${sessionId}`)
-                  }
-                  className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition"
-                >
-                  🎯 Reta a tus amigos
-                </button>
-              )}
             </div>
           </div>
         )}

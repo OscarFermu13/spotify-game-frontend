@@ -17,6 +17,7 @@ export default function SessionPlay() {
   const [gameId, setGameId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [finished, setFinished] = useState(false);
 
   useEffect(() => {
     const loadAndJoinSession = async () => {
@@ -50,6 +51,23 @@ export default function SessionPlay() {
       loadAndJoinSession();
     }
   }, [sessionId, navigate]);
+
+  const handleFinish = async ({ totalTime, perTrack }) => {
+    setFinished(true);
+ 
+    // Save results to backend
+    if (gameId) {
+      try {
+        await axios.post(`${API}/api/game/save`, {
+          gameId,
+          totalTime,
+          tracks: perTrack,
+        });
+      } catch (e) {
+        console.error('Error guardando partida:', e.response?.data || e.message);
+      }
+    }
+  };
 
   // Pantalla de carga mientras resuelve las peticiones
   if (loading) {
@@ -113,13 +131,35 @@ export default function SessionPlay() {
         </div>
 
         {/* Juego */}
-        <Game
+       <Game
           tracks={tracks}
           penalty={DEFAULT_PENALTY}
           token={null}
           apiBase={API}
           gameId={gameId}
+          sessionId={sessionId}
+          onFinish={handleFinish}
         />
+ 
+        {/* Show leaderboard button once game is finished */}
+        {finished && (
+          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() =>
+                navigate(`/leaderboards?session=${sessionId}`)
+              }
+              className="px-6 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-lg shadow transition"
+            >
+              🏆 Ver ranking de esta sesión
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition"
+            >
+              Volver al inicio
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
