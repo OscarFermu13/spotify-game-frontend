@@ -176,14 +176,26 @@ function App() {
                   ) : (
                     <p className="text-green-100 text-sm animate-pulse">Cargando...</p>
                   )}
+                  {daily?.alreadyCompleted && (
+                    <p className="text-green-200 text-xs mt-1">✅ Ya jugaste el reto de hoy</p>
+                  )}
                 </div>
-                <button
-                  onClick={() => daily && navigate(`/session/${daily.sessionId}`)}
-                  disabled={!daily || dailyLoading}
-                  className="flex-shrink-0 px-5 py-2 bg-white text-green-700 font-bold rounded-xl hover:bg-green-50 transition disabled:opacity-60 disabled:cursor-not-allowed shadow"
-                >
-                  ▶ Jugar
-                </button>
+                {daily?.alreadyCompleted ? (
+                  <button
+                    onClick={() => navigate(`/leaderboards`)}
+                    className="flex-shrink-0 px-5 py-2 bg-white text-green-700 font-bold rounded-xl hover:bg-green-50 transition shadow"
+                  >
+                    🏆 Ver ranking
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => daily && navigate(`/session/${daily.sessionId}`)}
+                    disabled={!daily || dailyLoading}
+                    className="flex-shrink-0 px-5 py-2 bg-white text-green-700 font-bold rounded-xl hover:bg-green-50 transition disabled:opacity-60 disabled:cursor-not-allowed shadow"
+                  >
+                    ▶ Jugar
+                  </button>
+                )}
               </div>
             </div>
           </div>

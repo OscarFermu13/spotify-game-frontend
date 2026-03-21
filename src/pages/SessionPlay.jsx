@@ -19,21 +19,28 @@ export default function SessionPlay() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [finished, setFinished] = useState(false);
+  const [alreadyCompleted, setAlreadyCompleted] = useState(false);
 
   useEffect(() => {
     const loadAndJoinSession = async () => {
       try {
         setLoading(true);
-
-        // Obtener la sesión (La cookie HttpOnly va sola, no hace falta header)
         const sessionResp = await axios.get(`${API}/api/session/${sessionId}`);
         setSession(sessionResp.data);
 
-        // Unirse a la partida (crea el Game para el usuario)
-        const joinResp = await axios.post(`${API}/api/session/${sessionId}/join`);
-
-        // Manejamos posibles variantes en la respuesta del backend
-        setGameId(joinResp.data.gameId || joinResp.data.id || joinResp.data.game?.id);
+        let gameId, completed;
+        if (sessionResp.data.source === 'daily') {
+          const dailyResp = await axios.get(`${API}/api/daily`);
+          gameId = dailyResp.data.gameId;
+          completed = dailyResp.data.alreadyCompleted;
+        } else {
+          const joinResp = await axios.post(`${API}/api/session/${sessionId}/join`);
+          gameId = joinResp.data.gameId || joinResp.data.id || joinResp.data.game?.id;
+          completed = false;
+        }
+ 
+        setGameId(gameId);
+        setAlreadyCompleted(completed);
       } catch (e) {
         console.error('Error cargando sesión:', e);
         if (e.response?.status === 401) {
@@ -113,6 +120,39 @@ export default function SessionPlay() {
 
   // Información de la sesión para mostrar al jugador
   const ownerName = session.owner?.displayName || 'Alguien';
+  const isDaily = session.source === 'daily';
+
+  // Daily sessions can only be played once
+  if (isDaily && alreadyCompleted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 p-6 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-lg text-center">
+          <div className="text-5xl mb-4">🏆</div>
+          <h2 className="text-2xl font-extrabold text-slate-800 mb-2">
+            Ya jugaste el reto de hoy
+          </h2>
+          <p className="text-slate-500 mb-6">
+            Vuelve mañana para un nuevo reto. Mientras tanto, ¿cómo quedaste?
+          </p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => navigate(`/leaderboards`)}
+              className="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-xl transition"
+            >
+              Ver ranking de hoy
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition"
+            >
+              Volver al inicio
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 p-6">
