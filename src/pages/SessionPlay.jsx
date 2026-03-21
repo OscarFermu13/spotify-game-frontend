@@ -15,6 +15,7 @@ export default function SessionPlay() {
 
   const [session, setSession] = useState(null);
   const [gameId, setGameId] = useState(null);
+  const [penalty, setPenalty] = useState(DEFAULT_PENALTY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [finished, setFinished] = useState(false);
@@ -141,7 +142,7 @@ export default function SessionPlay() {
         {/* Juego */}
         <Game
           tracks={tracks}
-          penalty={DEFAULT_PENALTY}
+          penalty={session.penalty || DEFAULT_PENALTY}
           token={null}
           apiBase={API}
           gameId={gameId}

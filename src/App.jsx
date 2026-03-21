@@ -11,16 +11,19 @@ function App() {
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
-  const [authChecking, setAuthChecking] = useState(true); // true mientras verifica la cookie
+  const [authChecking, setAuthChecking] = useState(true); 
 
   const [playlistUrl, setPlaylistUrl] = useState('');
   const [count, setCount] = useState(5);
   const [penalty, setPenalty] = useState(5);
   const [joinInput, setJoinInput] = useState('');
 
+  const [daily, setDaily] = useState(null);
+  const [dailyLoading, setDailyLoading] = useState(false);
+
   const [playlists, setPlaylists] = useState([]);
   const [showPlaylists, setShowPlaylists] = useState(false);
-  const [loading, setLoading] = useState(false); // true mientras crea/une sesión
+  const [loading, setLoading] = useState(false);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -33,6 +36,11 @@ function App() {
         setUser({ name: meResp.data.displayName || meResp.data.spotifyId });
         setPlaylists(playlistsResp.data.playlists || []);
         setIsAuthenticated(true);
+
+        // Load daily challenge info (non-blocking)
+        axios.get(`${API}/api/daily`)
+          .then((r) => setDaily(r.data))
+          .catch(() => {}); // silently ignore if daily is unavailable
       } catch {
         setIsAuthenticated(false);
       } finally {
@@ -146,6 +154,37 @@ function App() {
               >
                 Cerrar sesión
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Reto del día ── */}
+        {isAuthenticated && (
+          <div className="mb-6">
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-5 text-white">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-2xl">🗓️</span>
+                    <span className="font-extrabold text-lg">Reto de hoy</span>
+                  </div>
+                  {daily ? (
+                    <p className="text-green-100 text-sm">
+                      {daily.tracks?.length ?? 5} canciones ·{' '}
+                      {daily.playerCount ?? 0} jugadores hoy
+                    </p>
+                  ) : (
+                    <p className="text-green-100 text-sm animate-pulse">Cargando...</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => daily && navigate(`/session/${daily.sessionId}`)}
+                  disabled={!daily || dailyLoading}
+                  className="flex-shrink-0 px-5 py-2 bg-white text-green-700 font-bold rounded-xl hover:bg-green-50 transition disabled:opacity-60 disabled:cursor-not-allowed shadow"
+                >
+                  ▶ Jugar
+                </button>
+              </div>
             </div>
           </div>
         )}
