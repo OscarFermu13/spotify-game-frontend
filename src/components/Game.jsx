@@ -349,7 +349,7 @@ function SummaryCard({ t, penalty, i }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function Game({ tracks, penalty, token, apiBase, onFinish, sessionId }) {
+export default function Game({ tracks, penalty, token, apiBase, onFinish, postGameSlot }) {
   const { player, deviceId, ready } = useSpotifyPlayer(apiBase, token);
 
   const [index, setIndex] = useState(0);
@@ -541,6 +541,8 @@ export default function Game({ tracks, penalty, token, apiBase, onFinish, sessio
             <SummaryCard key={i} t={t} penalty={penalty} i={i} />
           ))}
         </div>
+
+        {postGameSlot && <div className="mt-2">{postGameSlot}</div>}
       </div>
     );
   }

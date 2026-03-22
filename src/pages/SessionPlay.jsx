@@ -62,6 +62,132 @@ function Spinner({ label }) {
   );
 }
 
+// ── Share helpers ─────────────────────────────────────────────────────────────
+ 
+const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
+ 
+function buildDailyShareText(gameResult) {
+  const { totalTime, perTrack } = gameResult;
+  const today = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+ 
+  const emojiRow = perTrack.map((t) => {
+    if (t.guessed) return '✅';
+    if (t.skipped) return '⏭️';
+    return '❌';
+  }).join('');
+ 
+  const guessed = perTrack.filter((t) => t.guessed).length;
+  return [
+    `🎵 SpotifyQuiz · Reto del día`,
+    `📅 ${today}`,
+    ``,
+    emojiRow,
+    ``,
+    `🎯 ${guessed}/${perTrack.length} canciones · ⏱️ ${totalTime.toFixed(2)}s`,
+    ``,
+    `¿Puedes superarme? → ${FRONTEND_URL}`,
+  ].join('\n');
+}
+ 
+function buildCustomShareText(gameResult, sessionId) {
+  const { totalTime, perTrack } = gameResult;
+  const emojiRow = perTrack.map((t) => t.guessed ? '✅' : t.skipped ? '⏭️' : '❌').join('');
+  const guessed = perTrack.filter((t) => t.guessed).length;
+  return [
+    `🎵 SpotifyQuiz`,
+    ``,
+    emojiRow,
+    ``,
+    `🎯 ${guessed}/${perTrack.length} · ⏱️ ${totalTime.toFixed(2)}s`,
+    ``,
+    `¿Te atreves? → ${FRONTEND_URL}/session/${sessionId}`,
+  ].join('\n');
+}
+ 
+function ShareButton({ text, isDaily }) {
+  const [copied, setCopied] = useState(false);
+ 
+  const handleShare = async () => {
+    // Try native share on mobile, fall back to clipboard
+    if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) {
+      try {
+        await navigator.share({ text });
+        return;
+      } catch (_) {}
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch (_) {}
+  };
+ 
+  return (
+    <button
+      onClick={handleShare}
+      className={`flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition-all duration-200 ${
+        copied
+          ? 'bg-green-500/20 border border-green-500/50 text-green-400'
+          : isDaily
+            ? 'bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300'
+            : 'bg-slate-700 hover:bg-slate-600 border border-slate-600 text-slate-200'
+      }`}
+    >
+      {copied ? (
+        <>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-4 h-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+          ¡Copiado!
+        </>
+      ) : (
+        <>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185z" />
+          </svg>
+          {isDaily ? 'Compartir resultado' : 'Compartir sesión'}
+        </>
+      )}
+    </button>
+  );
+}
+ 
+function PostGameActions({ isDaily, sessionId, gameResult, onLeaderboard, onHome }) {
+  const shareText = isDaily
+    ? buildDailyShareText(gameResult)
+    : buildCustomShareText(gameResult, sessionId);
+ 
+  return (
+    <div className="mt-10 pt-8 border-t border-slate-800">
+      {/* Share preview */}
+      <div className={`mb-6 p-4 rounded-2xl border font-mono text-sm whitespace-pre-wrap leading-relaxed ${
+        isDaily
+          ? 'bg-purple-500/5 border-purple-500/20 text-purple-200'
+          : 'bg-slate-800/60 border-slate-700 text-slate-300'
+      }`}>
+        {shareText}
+      </div>
+ 
+      {/* Action buttons */}
+      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <ShareButton text={shareText} isDaily={isDaily} />
+        <button
+          onClick={onLeaderboard}
+          className="flex items-center justify-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-400 text-black font-bold rounded-xl transition"
+        >
+          🏆 {isDaily ? 'Ver ranking de hoy' : 'Ver ranking de esta sesión'}
+        </button>
+        <button
+          onClick={onHome}
+          className="px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold rounded-xl transition"
+        >
+          Inicio
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function SessionPlay() {
   const { id: sessionId } = useParams();
   const navigate = useNavigate();
@@ -73,6 +199,7 @@ export default function SessionPlay() {
   const [error, setError] = useState(null);
   const [finished, setFinished] = useState(false);
   const [alreadyCompleted, setAlreadyCompleted] = useState(false);
+  const [gameResult, setGameResult] = useState(null);
 
   useEffect(() => {
     const loadAndJoinSession = async () => {
@@ -115,6 +242,7 @@ export default function SessionPlay() {
 
   const handleFinish = async ({ totalTime, perTrack }) => {
     setFinished(true);
+    setGameResult({ totalTime, perTrack });
 
     // Save results to backend
     if (gameId) {
@@ -203,18 +331,16 @@ export default function SessionPlay() {
         gameId={gameId}
         sessionId={sessionId}
         onFinish={handleFinish}
+        postGameSlot={finished && gameResult ? (
+          <PostGameActions
+            isDaily={isDaily}
+            sessionId={sessionId}
+            gameResult={gameResult}
+            onLeaderboard={() => navigate(isDaily ? '/leaderboards?tab=daily' : `/leaderboards?tab=session&session=${sessionId}`)}
+            onHome={() => navigate('/')}
+          />
+        ) : null}
       />
- 
-      {finished && (
-        <div className="mt-10 pt-8 border-t border-slate-800 flex flex-col sm:flex-row gap-3 justify-center">
-          <button onClick={() => navigate(`/leaderboards?session=${sessionId}`)} className="px-6 py-3 bg-green-500 hover:bg-green-400 text-black font-bold rounded-xl transition">
-            🏆 Ver ranking de esta sesión
-          </button>
-          <button onClick={() => navigate('/')} className="px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold rounded-xl transition">
-            Volver al inicio
-          </button>
-        </div>
-      )}
     </Layout>
   );
 }
