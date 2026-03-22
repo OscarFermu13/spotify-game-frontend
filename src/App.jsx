@@ -3,29 +3,155 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:4000';
-
 axios.defaults.withCredentials = true;
 
-function App() {
+// ── Animated equalizer bars ───────────────────────────────────────────────────
+function EqBars() {
+  return (
+    <div className="flex items-end gap-[3px] h-6" aria-hidden="true">
+      {[1,2,3,4,5,6,7].map((i) => (
+        <div
+          key={i}
+          className="w-[3px] rounded-full bg-green-400 opacity-80"
+          style={{
+            height: `${30 + Math.random() * 70}%`,
+            animation: `eq ${0.6 + i * 0.13}s ease-in-out infinite alternate`,
+            animationDelay: `${i * 0.07}s`,
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes eq {
+          from { transform: scaleY(0.3); }
+          to   { transform: scaleY(1); }
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap');
+      `}</style>
+    </div>
+  );
+}
+
+// ── Daily challenge card ──────────────────────────────────────────────────────
+function DailyCard({ daily, onPlay, onLeaderboard }) {
+  const dateStr = daily?.dailyDate
+    ? new Date(daily.dailyDate).toLocaleDateString('es-ES', {
+        weekday: 'long', day: 'numeric', month: 'long',
+      })
+    : 'Hoy';
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 p-[1px]">
+      <div className="relative rounded-2xl bg-gradient-to-br from-green-950/90 to-slate-950/95 p-6 overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-green-400/10 blur-2xl" />
+        <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-emerald-300/10 blur-xl" />
+
+        <div className="relative flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs font-semibold tracking-widest text-green-400 uppercase">
+                Reto del día
+              </span>
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            </div>
+            <p className="text-white font-bold text-lg leading-tight capitalize mb-1" style={{fontFamily: "'Syne', sans-serif"}}>
+              {dateStr}
+            </p>
+            {daily ? (
+              <p className="text-green-300/70 text-sm">
+                {daily.tracks?.length ?? 5} canciones ·{' '}
+                <span className="text-green-300">{daily.playerCount ?? 0} jugadores hoy</span>
+              </p>
+            ) : (
+              <p className="text-green-300/50 text-sm animate-pulse">Cargando...</p>
+            )}
+            {daily?.alreadyCompleted && (
+              <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-green-300 bg-green-400/10 px-2.5 py-1 rounded-full">
+                <span>✓</span> Ya completado hoy
+              </div>
+            )}
+          </div>
+
+          <div className="flex-shrink-0">
+            {daily?.alreadyCompleted ? (
+              <button
+                onClick={onLeaderboard}
+                className="px-4 py-2.5 bg-green-400 hover:bg-green-300 text-green-950 text-sm font-bold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-green-900/40"
+              >
+                🏆 Ranking
+              </button>
+            ) : (
+              <button
+                onClick={onPlay}
+                disabled={!daily}
+                className="px-5 py-2.5 bg-green-400 hover:bg-green-300 text-green-950 text-sm font-bold rounded-xl transition-all hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-green-900/40"
+              >
+                ▶ Jugar
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Section divider ───────────────────────────────────────────────────────────
+function SectionLabel({ children }) {
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      <span className="text-xs font-semibold tracking-widest text-slate-500 uppercase">{children}</span>
+      <div className="flex-1 h-px bg-slate-800" />
+    </div>
+  );
+}
+
+// ── Playlist card ─────────────────────────────────────────────────────────────
+function PlaylistCard({ pl, onClick, selected }) {
+  return (
+    <div
+      onClick={onClick}
+      className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border ${
+        selected
+          ? 'border-green-500/60 bg-green-500/10'
+          : 'border-slate-800 bg-slate-900/50 hover:border-slate-700 hover:bg-slate-800/50'
+      }`}
+    >
+      {pl.images?.[0] ? (
+        <img src={pl.images[0].url} alt={pl.name} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+      ) : (
+        <div className="w-12 h-12 bg-slate-700 rounded-lg flex-shrink-0 flex items-center justify-center text-slate-500">♪</div>
+      )}
+      <div className="flex-1 min-w-0">
+        <p className={`font-medium text-sm truncate ${selected ? 'text-green-300' : 'text-slate-100'}`}>{pl.name}</p>
+        <p className="text-xs text-slate-500">{pl.tracks.total} canciones</p>
+      </div>
+      {selected && <span className="text-green-400 flex-shrink-0">✓</span>}
+    </div>
+  );
+}
+
+// ── Main App ──────────────────────────────────────────────────────────────────
+export default function App() {
   const navigate = useNavigate();
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
-  const [authChecking, setAuthChecking] = useState(true); 
-
-  const [playlistUrl, setPlaylistUrl] = useState('');
-  const [count, setCount] = useState(5);
-  const [penalty, setPenalty] = useState(5);
-  const [joinInput, setJoinInput] = useState('');
+  const [authChecking, setAuthChecking] = useState(true);
 
   const [daily, setDaily] = useState(null);
-  const [dailyLoading, setDailyLoading] = useState(false);
-
   const [playlists, setPlaylists] = useState([]);
   const [showPlaylists, setShowPlaylists] = useState(false);
+
+  const [playlistUrl, setPlaylistUrl] = useState('');
+  const [selectedPlaylist, setSelectedPlaylist] = useState(null);
+  const [count, setCount] = useState(5);
+  const [penalty, setPenalty] = useState(5);
   const [loading, setLoading] = useState(false);
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
+  const [joinInput, setJoinInput] = useState('');
+
+  // ── Auth ────────────────────────────────────────────────────────────────────
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -36,11 +162,9 @@ function App() {
         setUser({ name: meResp.data.displayName || meResp.data.spotifyId });
         setPlaylists(playlistsResp.data.playlists || []);
         setIsAuthenticated(true);
-
-        // Load daily challenge info (non-blocking)
         axios.get(`${API}/api/daily`)
           .then((r) => setDaily(r.data))
-          .catch(() => {}); // silently ignore if daily is unavailable
+          .catch(() => {});
       } catch {
         setIsAuthenticated(false);
       } finally {
@@ -51,32 +175,27 @@ function App() {
   }, []);
 
   const handleLogin = (switchAccount = false) => {
-    const url = switchAccount
+    window.location.href = switchAccount
       ? `${API}/auth/login?switch_account=true`
       : `${API}/auth/login`;
-    window.location.href = url;
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
     setUser(null);
     setPlaylists([]);
-    // TODO: POST /auth/logout para limpiar la cookie HttpOnly en el servidor
+    setDaily(null);
+    // TODO: POST /auth/logout
   };
 
-  // ── Sesiones ──────────────────────────────────────────────────────────────
+  // ── Sessions ─────────────────────────────────────────────────────────────────
   const createSession = async () => {
-    if (!playlistUrl) {
-      alert('Introduce la URL de una playlist.');
-      return;
-    }
+    const url = selectedPlaylist?.external_urls?.spotify || playlistUrl;
+    if (!url) { alert('Selecciona o introduce una playlist.'); return; }
     setLoading(true);
     try {
       const resp = await axios.post(`${API}/api/session/create`, {
-        playlistUrl,
-        isPublic: true,
-        count,
-        penalty,
+        playlistUrl: url, isPublic: true, count, penalty,
       });
       navigate(`/session/${resp.data.sessionId}`);
     } catch (e) {
@@ -93,283 +212,230 @@ function App() {
     navigate(`/session/${sid}`);
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
-  // Pantalla de carga mientras se verifica la cookie — evita un flash
-  // del botón "Conectar con Spotify" para usuarios ya autenticados
+  // ── Loading screen ────────────────────────────────────────────────────────────
   if (authChecking) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-2xl shadow-lg text-xl font-semibold text-slate-600 animate-pulse">
-          Cargando...
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <EqBars />
+          <span className="text-slate-300 text-sm">Cargando...</span>
         </div>
       </div>
     );
   }
 
+  // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 p-6">
-      <div className="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-lg">
-        <h1 className="text-3xl font-extrabold mb-6 text-center text-slate-800">
-          🎧 Spotify Quiz
-        </h1>
+    <div className="min-h-screen bg-slate-950 text-white" style={{fontFamily: "'DM Sans', sans-serif", color: '#f1f5f9'}}>
+      {/* Noise texture overlay */}
+      <div className="fixed inset-0 opacity-[0.015] pointer-events-none" style={{backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")"}} />
 
-        {/* ── Auth banner ── */}
-        {!isAuthenticated ? (
-          <div className="text-center mb-6">
-            <p className="mb-4 text-slate-600">
-              Conéctate con Spotify para poder reproducir canciones con Web Playback SDK.
-            </p>
-            <div className="flex flex-col items-center gap-2">
+      <div className="relative max-w-3xl mx-auto px-4 py-8 pb-16">
+
+        {/* ── Header ── */}
+        <header className="mb-8">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <EqBars />
+                <h1 className="text-3xl font-black text-white tracking-tight" style={{fontFamily: "'Syne', sans-serif"}}>
+                  Spotify<span className="text-green-400">Quiz</span>
+                </h1>
+              </div>
+              <p className="text-slate-500 text-sm pl-[calc(7*3px+6*3px+4px)]">
+                Adivina canciones. Reta a tus amigos.
+              </p>
+            </div>
+
+            {/* Auth controls */}
+            {isAuthenticated ? (
+              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                <span className="text-sm text-slate-200 font-medium">{user?.name}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleLogin(true)}
+                    className="text-xs text-slate-600 hover:text-slate-300 transition"
+                  >
+                    Cambiar cuenta
+                  </button>
+                  <span className="text-slate-700">·</span>
+                  <button
+                    onClick={handleLogout}
+                    className="text-xs text-slate-600 hover:text-slate-300 transition"
+                  >
+                    Salir
+                  </button>
+                </div>
+              </div>
+            ) : (
               <button
                 onClick={() => handleLogin(false)}
-                className="px-6 py-2 bg-green-600 hover:bg-green-700 transition text-white font-semibold rounded-lg shadow"
+                className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-400 text-black text-sm font-bold rounded-xl transition-all hover:scale-105 active:scale-95"
               >
-                Conectar con Spotify
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                </svg>
+                Conectar
               </button>
-              <button
-                onClick={() => handleLogin(true)}
-                className="text-sm text-slate-500 hover:text-slate-700 underline underline-offset-2 transition"
-              >
-                Usar otra cuenta
-              </button>
-            </div>
+            )}
           </div>
-        ) : (
-          <div className="flex items-center justify-between mb-6 bg-slate-50 p-3 rounded-lg border">
-            <p className="text-slate-700">
-              ✅ Conectado como{' '}
-              <span className="font-semibold">{user?.name}</span>
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleLogin(true)}
-                className="px-3 py-1 text-sm text-slate-500 hover:text-slate-700 underline underline-offset-2 transition"
-              >
-                Cambiar cuenta
-              </button>
-              <button
-                onClick={handleLogout}
-                className="px-3 py-1 border rounded-lg text-slate-600 hover:bg-slate-100 transition"
-              >
-                Cerrar sesión
-              </button>
-            </div>
-          </div>
-        )}
+        </header>
 
-        {/* ── Reto del día ── */}
+        {/* ── Daily challenge ── */}
         {isAuthenticated && (
-          <div className="mb-6">
-            <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-5 text-white">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-2xl">🗓️</span>
-                    <span className="font-extrabold text-lg">Reto de hoy</span>
-                  </div>
-                  {daily ? (
-                    <p className="text-green-100 text-sm">
-                      {daily.tracks?.length ?? 5} canciones ·{' '}
-                      {daily.playerCount ?? 0} jugadores hoy
-                    </p>
-                  ) : (
-                    <p className="text-green-100 text-sm animate-pulse">Cargando...</p>
-                  )}
-                  {daily?.alreadyCompleted && (
-                    <p className="text-green-200 text-xs mt-1">✅ Ya jugaste el reto de hoy</p>
-                  )}
-                </div>
-                {daily?.alreadyCompleted ? (
-                  <button
-                    onClick={() => navigate(`/leaderboards`)}
-                    className="flex-shrink-0 px-5 py-2 bg-white text-green-700 font-bold rounded-xl hover:bg-green-50 transition shadow"
-                  >
-                    🏆 Ver ranking
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => daily && navigate(`/session/${daily.sessionId}`)}
-                    disabled={!daily || dailyLoading}
-                    className="flex-shrink-0 px-5 py-2 bg-white text-green-700 font-bold rounded-xl hover:bg-green-50 transition disabled:opacity-60 disabled:cursor-not-allowed shadow"
-                  >
-                    ▶ Jugar
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+          <section className="mb-8">
+            <SectionLabel>Reto del día</SectionLabel>
+            <DailyCard
+              daily={daily}
+              onPlay={() => daily && navigate(`/session/${daily.sessionId}`)}
+              onLeaderboard={() => navigate('/leaderboards')}
+            />
+          </section>
         )}
 
-        {/* ── Configuración de partida ── */}
-        <div className="space-y-4">
-          <hr className="h-px my-8 bg-gray-200 border-0" />
-          <h2 className="text-xl font-bold text-slate-800">Partida rápida</h2>
+        {/* ── Quick play ── */}
+        {isAuthenticated && (
+          <section className="mb-8">
+            <SectionLabel>Partida rápida</SectionLabel>
 
-          {/* Playlists del usuario */}
-          {playlists.length > 0 && (
-            <div className="mb-6">
-              <button
-                className="w-full px-4 py-2 bg-blue-100 hover:bg-blue-200 rounded-lg text-left font-semibold text-slate-800 flex justify-between items-center shadow-sm transition"
-                onClick={() => setShowPlaylists(!showPlaylists)}
-              >
-                Tus playlists
-                <span className="text-sm">{showPlaylists ? '▲' : '▼'}</span>
-              </button>
+            <div className="space-y-3">
+              {/* Playlist selector */}
+              {playlists.length > 0 && (
+                <div>
+                  <button
+                    onClick={() => setShowPlaylists((v) => !v)}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-slate-800 bg-slate-900/50 hover:border-slate-700 transition text-sm"
+                  >
+                    <span className={selectedPlaylist ? 'text-slate-100 font-medium' : 'text-slate-500'}>
+                      {selectedPlaylist ? selectedPlaylist.name : 'Elige una de tus playlists…'}
+                    </span>
+                    <span className="text-slate-600 text-xs">{showPlaylists ? '▲' : '▼'}</span>
+                  </button>
 
-              {showPlaylists && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 max-h-64 overflow-y-auto">
-                  {playlists.map((pl) => (
-                    <div
-                      key={pl.id}
-                      onClick={() => {
-                        setPlaylistUrl(pl.external_urls.spotify);
-                        setShowPlaylists(false);
-                      }}
-                      className="flex items-center gap-4 p-3 bg-white rounded-xl shadow hover:shadow-md cursor-pointer transition transform hover:-translate-y-0.5"
-                    >
-                      {pl.images?.[0] ? (
-                        <img
-                          src={pl.images[0].url}
-                          alt={pl.name}
-                          className="w-14 h-14 rounded-lg object-cover shadow-sm"
+                  {showPlaylists && (
+                    <div className="mt-2 max-h-56 overflow-y-auto space-y-1.5 pr-1">
+                      {playlists.map((pl) => (
+                        <PlaylistCard
+                          key={pl.id}
+                          pl={pl}
+                          selected={selectedPlaylist?.id === pl.id}
+                          onClick={() => {
+                            setSelectedPlaylist(pl);
+                            setPlaylistUrl('');
+                            setShowPlaylists(false);
+                          }}
                         />
-                      ) : (
-                        <div className="w-14 h-14 bg-slate-200 rounded-lg" />
-                      )}
-                      <div className="flex-1">
-                        <div className="font-medium text-slate-800 truncate">
-                          {pl.name}
-                        </div>
-                        <div className="text-sm text-slate-500">
-                          {pl.tracks.total} canciones
-                        </div>
-                      </div>
-                      <div className="text-sm text-slate-400">▶️</div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
-            </div>
-          )}
 
-          {/* URL Playlist */}
-          <div>
-            <label className="block mb-1 font-medium text-slate-700">
-              URL de la playlist
-            </label>
-            <input
-              value={playlistUrl}
-              onChange={(e) => setPlaylistUrl(e.target.value)}
-              disabled={loading}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
-              placeholder="https://open.spotify.com/playlist/..."
-            />
-          </div>
+              {/* Manual URL input */}
+              <div className="relative">
+                <input
+                  value={playlistUrl}
+                  onChange={(e) => { setPlaylistUrl(e.target.value); setSelectedPlaylist(null); }}
+                  disabled={loading}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-800 bg-slate-900/50 text-slate-100 placeholder-slate-600 text-sm focus:outline-none focus:border-green-500/50 focus:bg-slate-900 transition disabled:opacity-50"
+                  placeholder="O pega una URL de Spotify…"
+                />
+              </div>
 
-          {/* Opciones */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block mb-1 font-medium text-slate-700">
-                Nº canciones
-              </label>
-              <select
-                value={count}
-                onChange={(e) => setCount(Number(e.target.value))}
-                disabled={loading}
-                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
-              >
-                <option>3</option>
-                <option>5</option>
-                <option>10</option>
-              </select>
-            </div>
+              {/* Options row */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1.5 ml-1">Canciones</label>
+                  <select
+                    value={count}
+                    onChange={(e) => setCount(Number(e.target.value))}
+                    disabled={loading}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-800 bg-slate-900/50 text-slate-100 text-sm focus:outline-none focus:border-green-500/50 transition disabled:opacity-50"
+                  >
+                    <option value={3}>3 canciones</option>
+                    <option value={5}>5 canciones</option>
+                    <option value={10}>10 canciones</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1.5 ml-1">Penalización</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      value={penalty}
+                      onChange={(e) => setPenalty(Number(e.target.value))}
+                      disabled={loading}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-800 bg-slate-900/50 text-slate-100 text-sm focus:outline-none focus:border-green-500/50 transition disabled:opacity-50"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-600 pointer-events-none">seg</span>
+                  </div>
+                </div>
+              </div>
 
-            <div>
-              <label className="block mb-1 font-medium text-slate-700">
-                Penalización (segundos)
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={penalty}
-                onChange={(e) => setPenalty(Number(e.target.value))}
-                disabled={loading}
-                className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
-              />
-            </div>
-
-            <div className="flex items-end">
               <button
                 onClick={createSession}
-                disabled={loading || !isAuthenticated}
-                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 transition text-white font-semibold rounded-lg shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading || (!selectedPlaylist && !playlistUrl.trim())}
+                className="w-full py-3 bg-green-500 hover:bg-green-400 disabled:bg-slate-800 disabled:text-slate-600 text-black font-bold rounded-xl transition-all hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:hover:scale-100 text-sm"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
                     </svg>
-                    Creando...
+                    Creando sesión…
                   </span>
-                ) : (
-                  'Cargar canciones'
-                )}
+                ) : 'Crear sesión →'}
               </button>
             </div>
-          </div>
-        </div>
-      </div>
+          </section>
+        )}
 
-      {/* ── Leaderboards ── */}
-      <div className="max-w-3xl mx-auto my-8">
-        <a
-          href="/leaderboards"
-          className="flex items-center justify-between w-full bg-white p-5 rounded-2xl shadow-lg hover:shadow-xl transition group"
-        >
-          <div className="flex items-center gap-4">
-            <span className="text-3xl">🏆</span>
-            <div>
-              <div className="font-bold text-slate-800 text-lg">Leaderboards</div>
-              <div className="text-sm text-slate-500">Rankings globales, por sesión y tu historial</div>
-            </div>
-          </div>
-          <span className="text-slate-400 group-hover:text-slate-600 text-xl transition">→</span>
-        </a>
-      </div>
-
-      {/* ── Únete a una sesión ── */}
-      <div className="max-w-3xl mx-auto my-8 bg-white p-8 rounded-2xl shadow-lg">
-        <h2 className="text-xl font-bold mb-6 text-slate-800">
-          Únete a una sesión
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="col-span-2">
-            <label className="block mb-1 font-medium text-slate-700">
-              ID de la sesión
-            </label>
+        {/* ── Join session ── */}
+        <section className="mb-8">
+          <SectionLabel>Unirse a una sesión</SectionLabel>
+          <div className="flex gap-2">
             <input
               value={joinInput}
               onChange={(e) => setJoinInput(e.target.value)}
-              disabled={loading}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
-              placeholder="cmabcxyz123..."
+              onKeyDown={(e) => e.key === 'Enter' && joinSession()}
+              placeholder="ID de sesión…"
+              className="flex-1 px-4 py-3 rounded-xl border border-slate-800 bg-slate-900/50 text-slate-100 placeholder-slate-600 text-sm focus:outline-none focus:border-green-500/50 transition"
             />
-          </div>
-          <div className="flex items-end">
             <button
               onClick={joinSession}
-              disabled={loading || !joinInput.trim() || !isAuthenticated}
-              className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 transition text-white font-semibold rounded-lg shadow disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!joinInput.trim() || (!isAuthenticated)}
+              className="px-5 py-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-100 text-sm font-semibold rounded-xl transition"
             >
               Jugar
             </button>
           </div>
+          {!isAuthenticated && (
+            <p className="text-xs text-slate-600 mt-2 ml-1">
+              Conecta con Spotify para jugar →{' '}
+              <button onClick={() => handleLogin(false)} className="text-green-500 hover:text-green-400 transition underline">
+                Conectar
+              </button>
+            </p>
+          )}
+        </section>
+
+        {/* ── Bottom nav links ── */}
+        <div className="flex items-center justify-center gap-6 pt-4 border-t border-slate-900">
+          <a
+            href="/leaderboards"
+            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-200 transition"
+          >
+            <span>🏆</span> Leaderboards
+          </a>
+          <span className="w-px h-4 bg-slate-800" />
+          <span className="text-sm text-slate-700">
+            SpotifyQuiz
+          </span>
         </div>
+
       </div>
     </div>
   );
 }
-
-export default App;

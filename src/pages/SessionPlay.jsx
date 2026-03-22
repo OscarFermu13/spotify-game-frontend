@@ -6,8 +6,61 @@ import Game from '../components/Game';
 axios.defaults.withCredentials = true;
 
 const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:4000';
-
 const DEFAULT_PENALTY = 5;
+
+function EqBars() {
+  return (
+    <div className="flex items-end gap-[3px] h-5" aria-hidden="true">
+      {[1,2,3,4,5,6,7].map((i) => (
+        <div
+          key={i}
+          className="w-[3px] rounded-full bg-green-400 opacity-80"
+          style={{
+            height: `${30 + (i * 17) % 70}%`,
+            animation: `eq ${0.6 + i * 0.13}s ease-in-out infinite alternate`,
+            animationDelay: `${i * 0.07}s`,
+          }}
+        />
+      ))}
+      <style>{`@keyframes eq { from { transform: scaleY(0.3); } to { transform: scaleY(1); } }`}</style>
+    </div>
+  );
+}
+
+function Layout({ children }) {
+  return (
+    <div className="min-h-screen bg-slate-950 text-white" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap');`}</style>
+      <div className="fixed inset-0 pointer-events-none opacity-[0.015]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")" }} />
+      <div className="relative max-w-3xl mx-auto px-6 py-8">
+        <header className="flex items-center justify-between mb-10">
+          <a href="/" className="flex items-center gap-3">
+            <EqBars />
+            <span className="text-xl font-black text-white tracking-tight" style={{ fontFamily: "'Syne', sans-serif" }}>
+              Spotify<span className="text-green-400">Quiz</span>
+            </span>
+          </a>
+          <a href="/" className="text-sm text-slate-400 hover:text-slate-200 transition">← Inicio</a>
+        </header>
+        {children}
+      </div>
+    </div>
+  );
+}
+ 
+function Spinner({ label }) {
+  return (
+    <div className="flex items-center justify-center py-24">
+      <div className="flex items-center gap-3">
+        <svg className="animate-spin h-5 w-5 text-green-400" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+        </svg>
+        <span className="text-slate-400">{label}</span>
+      </div>
+    </div>
+  );
+}
 
 export default function SessionPlay() {
   const { id: sessionId } = useParams();
@@ -40,12 +93,12 @@ export default function SessionPlay() {
         }
  
         setGameId(gameId);
+        setPenalty(sessionResp.data.penalty || DEFAULT_PENALTY);
         setAlreadyCompleted(completed);
       } catch (e) {
         console.error('Error cargando sesión:', e);
         if (e.response?.status === 401) {
           // Si da 401, no está autenticado o la cookie expiró
-          alert('Debes iniciar sesión con Spotify para jugar.');
           navigate('/');
         } else {
           setError('No se pudo cargar la sesión. Verifica que el ID sea correcto.');
@@ -78,138 +131,90 @@ export default function SessionPlay() {
   };
 
   // Pantalla de carga mientras resuelve las peticiones
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 p-6 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-2xl shadow-lg text-xl font-semibold text-slate-600 animate-pulse">
-          Cargando partida...
-        </div>
-      </div>
-    );
-  }
-
-  // Pantalla de error si la sesión no existe
+ if (loading) return <Layout><Spinner label="Cargando partida…" /></Layout>;
+ 
   if (error || !session || !gameId) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 p-6">
-        <div className="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-lg text-center">
-          <p className="text-red-600 font-semibold mb-6 text-lg">
-            {error || 'Error al cargar la partida.'}
-          </p>
-          <button
-            onClick={() => navigate('/')}
-            className="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
-          >
+      <Layout>
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="text-5xl mb-4">😕</div>
+          <h2 className="text-2xl font-black text-white mb-2" style={{ fontFamily: "'Syne', sans-serif" }}>Sesión no encontrada</h2>
+          <p className="text-slate-400 mb-8">{error || 'Error al cargar la partida.'}</p>
+          <button onClick={() => navigate('/')} className="px-6 py-3 bg-green-500 hover:bg-green-400 text-black font-bold rounded-xl transition">
             Volver al inicio
           </button>
         </div>
-      </div>
+      </Layout>
     );
   }
-
-  // Adaptar tracks del formato de SessionTrack (backend) al formato
-  // que espera Game.jsx: { id, name, artists, uri, album, duration_ms }
-  const tracks = session.tracks?.map((t) => ({
-    id: t.trackId,
-    name: t.name,
-    artists: t.artists,
-    uri: t.uri,
-    album: t.albumJson,
-    duration_ms: t.durationMs,
-  })) ?? [];
-
-  // Información de la sesión para mostrar al jugador
-  const ownerName = session.owner?.displayName || 'Alguien';
+ 
   const isDaily = session.source === 'daily';
-
-  // Daily sessions can only be played once
+  const ownerName = session.owner?.displayName || 'Alguien';
+  const tracks = (session.tracks ?? []).map((t) => ({
+    id: t.trackId, name: t.name, artists: t.artists,
+    uri: t.uri, album: t.albumJson, duration_ms: t.durationMs,
+  }));
+ 
   if (isDaily && alreadyCompleted) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 p-6 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-lg text-center">
-          <div className="text-5xl mb-4">🏆</div>
-          <h2 className="text-2xl font-extrabold text-slate-800 mb-2">
-            Ya jugaste el reto de hoy
-          </h2>
-          <p className="text-slate-500 mb-6">
-            Vuelve mañana para un nuevo reto. Mientras tanto, ¿cómo quedaste?
-          </p>
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() => navigate(`/leaderboards`)}
-              className="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-xl transition"
-            >
-              Ver ranking de hoy
+      <Layout>
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="text-6xl mb-5">🏆</div>
+          <h2 className="text-3xl font-black text-white mb-3" style={{ fontFamily: "'Syne', sans-serif" }}>Ya jugaste el reto de hoy</h2>
+          <p className="text-slate-400 mb-8 max-w-sm">Vuelve mañana para un nuevo reto. Mientras tanto, ¿cómo quedaste en el ranking?</p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button onClick={() => navigate('/leaderboards')} className="px-6 py-3 bg-green-500 hover:bg-green-400 text-black font-bold rounded-xl transition">
+              🏆 Ver ranking de hoy
             </button>
-            <button
-              onClick={() => navigate('/')}
-              className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition"
-            >
+            <button onClick={() => navigate('/')} className="px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold rounded-xl transition">
               Volver al inicio
             </button>
           </div>
         </div>
-      </div>
+      </Layout>
     );
   }
-
-
+ 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 p-6">
-      <div className="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-lg">
-
-        {/* Cabecera con info de la sesión */}
-        <div className="mb-6 text-center">
-          <h1 className="text-3xl font-extrabold text-slate-800 mb-1">
-            🎧 Spotify Quiz
-          </h1>
-        </div>
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-slate-500 text-sm">
-            Sesión creada por{' '}
-            <span className="font-semibold text-slate-700">{ownerName}</span>
-            {' · '}
-            {tracks.length} {tracks.length === 1 ? 'canción' : 'canciones'}
-          </p>
-          <a
-            href="/"
-            className="text-sm text-slate-500 hover:text-slate-700 transition"
-          >
-            ← Volver
-          </a>
-        </div>
-
-        {/* Juego */}
-        <Game
-          tracks={tracks}
-          penalty={session.penalty || DEFAULT_PENALTY}
-          token={null}
-          apiBase={API}
-          gameId={gameId}
-          sessionId={sessionId}
-          onFinish={handleFinish}
-        />
-
-        {/* Show leaderboard button once game is finished */}
-        {finished && (
-          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() =>
-                navigate(`/leaderboards?session=${sessionId}`)
-              }
-              className="px-6 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-lg shadow transition"
-            >
-              🏆 Ver ranking de esta sesión
-            </button>
-            <button
-              onClick={() => navigate('/')}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition"
-            >
-              Volver al inicio
-            </button>
+    <Layout>
+      <div className="mb-6">
+        {isDaily && (
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-bold tracking-widest text-green-400 uppercase">Reto del día</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
           </div>
         )}
+        <h1 className="text-3xl font-black text-white" style={{ fontFamily: "'Syne', sans-serif" }}>
+          {isDaily ? 'Reto de hoy' : `Sesión de ${ownerName}`}
+        </h1>
+        <p className="text-slate-400 text-sm mt-1">
+          {tracks.length} {tracks.length === 1 ? 'canción' : 'canciones'}
+          {!isDaily && ` · Creada por ${ownerName}`}
+        </p>
       </div>
-    </div>
+ 
+      <div className="h-px bg-slate-800 mb-8" />
+ 
+      <Game
+        tracks={tracks}
+        penalty={DEFAULT_PENALTY}
+        token={null}
+        apiBase={API}
+        gameId={gameId}
+        sessionId={sessionId}
+        onFinish={handleFinish}
+      />
+ 
+      {finished && (
+        <div className="mt-10 pt-8 border-t border-slate-800 flex flex-col sm:flex-row gap-3 justify-center">
+          <button onClick={() => navigate(`/leaderboards?session=${sessionId}`)} className="px-6 py-3 bg-green-500 hover:bg-green-400 text-black font-bold rounded-xl transition">
+            🏆 Ver ranking de esta sesión
+          </button>
+          <button onClick={() => navigate('/')} className="px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold rounded-xl transition">
+            Volver al inicio
+          </button>
+        </div>
+      )}
+    </Layout>
   );
 }
