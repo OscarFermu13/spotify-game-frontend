@@ -228,7 +228,7 @@ export default function SessionPlay() {
           // Si da 401, no está autenticado o la cookie expiró
           navigate('/');
         } else {
-          setError('No se pudo cargar la sesión. Verifica que el ID sea correcto.');
+          setError(e.response?.data?.error || 'No se pudo cargar la sesión.');
         }
       } finally {
         setLoading(false);
@@ -325,7 +325,7 @@ export default function SessionPlay() {
  
       <Game
         tracks={tracks}
-        penalty={DEFAULT_PENALTY}
+        penalty={penalty}
         token={null}
         apiBase={API}
         gameId={gameId}
