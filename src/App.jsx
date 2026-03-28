@@ -9,7 +9,7 @@ axios.defaults.withCredentials = true;
 function EqBars() {
   return (
     <div className="flex items-end gap-[3px] h-5" aria-hidden="true">
-      {[1,2,3,4,5,6,7].map((i) => (
+      {[1, 2, 3, 4, 5, 6, 7].map((i) => (
         <div
           key={i}
           className="w-[3px] rounded-full bg-green-400 opacity-80"
@@ -28,8 +28,8 @@ function EqBars() {
 function DailyCard({ daily, onPlay, onLeaderboard }) {
   const dateStr = daily?.dailyDate
     ? new Date(daily.dailyDate).toLocaleDateString('es-ES', {
-        weekday: 'long', day: 'numeric', month: 'long',
-      })
+      weekday: 'long', day: 'numeric', month: 'long',
+    })
     : 'Hoy';
 
   return (
@@ -100,11 +100,10 @@ function PlaylistCard({ pl, onClick, selected }) {
   return (
     <div
       onClick={onClick}
-      className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border ${
-        selected
+      className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border ${selected
           ? 'border-green-500/50 bg-green-500/10'
           : 'border-slate-800 bg-slate-900/50 hover:border-slate-700 hover:bg-slate-800/50'
-      }`}
+        }`}
     >
       {pl.images?.[0] ? (
         <img src={pl.images[0].url} alt={pl.name} className="w-11 h-11 rounded-lg object-cover flex-shrink-0" />
@@ -155,7 +154,7 @@ export default function App() {
         setUser({ name: meResp.data.displayName || meResp.data.spotifyId });
         setPlaylists(playlistsResp.data.playlists || []);
         setIsAuthenticated(true);
-        axios.get(`${API}/api/daily`).then((r) => setDaily(r.data)).catch(() => {});
+        axios.get(`${API}/api/daily`).then((r) => setDaily(r.data)).catch(() => { });
       } catch {
         setIsAuthenticated(false);
       } finally {
@@ -262,7 +261,7 @@ export default function App() {
               className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-400 text-black text-sm font-bold rounded-xl transition hover:scale-105 active:scale-95"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
               </svg>
               Conectar con Spotify
             </button>
@@ -276,7 +275,7 @@ export default function App() {
             <DailyCard
               daily={daily}
               onPlay={() => daily && navigate(`/session/${daily.sessionId}`)}
-              onLeaderboard={() => navigate('/leaderboards')}
+              onLeaderboard={() => navigate('/leaderboards?tab=daily')}
             />
           </section>
         )}
@@ -367,8 +366,8 @@ export default function App() {
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                     </svg>
                     Creando sesión…
                   </span>
@@ -409,6 +408,10 @@ export default function App() {
 
         {/* ── Footer nav ── */}
         <div className="flex items-center justify-center gap-6 pt-5 border-t border-slate-900">
+          <a href="/packs" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-200 transition">
+            <span>🎮</span> Packs
+          </a>
+          <span className="w-px h-4 bg-slate-800" />
           <a href="/leaderboards" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-200 transition">
             <span>🏆</span> Leaderboards
           </a>

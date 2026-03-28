@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import Game from '../components/Game';
 
 axios.defaults.withCredentials = true;
@@ -191,6 +191,7 @@ function PostGameActions({ isDaily, sessionId, gameResult, onLeaderboard, onHome
 export default function SessionPlay() {
   const { id: sessionId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [session, setSession] = useState(null);
   const [gameId, setGameId] = useState(null);
@@ -200,6 +201,7 @@ export default function SessionPlay() {
   const [finished, setFinished] = useState(false);
   const [alreadyCompleted, setAlreadyCompleted] = useState(false);
   const [gameResult, setGameResult] = useState(null);
+  const [packName, setPackName] = useState(null);
 
   useEffect(() => {
     const loadAndJoinSession = async () => {
@@ -214,8 +216,14 @@ export default function SessionPlay() {
           gameId = dailyResp.data.gameId;
           completed = dailyResp.data.alreadyCompleted;
         } else {
-          const joinResp = await axios.post(`${API}/api/session/${sessionId}/join`);
-          gameId = joinResp.data.gameId || joinResp.data.id || joinResp.data.game?.id;
+          const stateGameId = location.state?.gameId;
+          if (sessionResp.data.source === 'pack' && stateGameId) {
+            gameId = stateGameId;
+            setPackName(location.state?.packName ?? null);
+          } else {
+            const joinResp = await axios.post(`${API}/api/session/${sessionId}/join`);
+            gameId = joinResp.data.gameId || joinResp.data.id || joinResp.data.game?.id;
+          }
           completed = false;
         }
  
@@ -277,6 +285,7 @@ export default function SessionPlay() {
   }
  
   const isDaily = session.source === 'daily';
+  const isPack = session.source === 'pack';
   const ownerName = session.owner?.displayName || 'Alguien';
   const tracks = (session.tracks ?? []).map((t) => ({
     id: t.trackId, name: t.name, artists: t.artists,
@@ -312,8 +321,13 @@ export default function SessionPlay() {
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
           </div>
         )}
+        {isPack && (
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-bold tracking-widest text-blue-400 uppercase">🎮 Pack</span>
+          </div>
+        )}
         <h1 className="text-3xl font-black text-white" style={{ fontFamily: "'Syne', sans-serif" }}>
-          {isDaily ? 'Reto de hoy' : `Sesión de ${ownerName}`}
+          {isDaily ? 'Reto de hoy' : isPack ? (packName ?? 'Pack') : `Sesión de ${ownerName}`}
         </h1>
         <p className="text-slate-400 text-sm mt-1">
           {tracks.length} {tracks.length === 1 ? 'canción' : 'canciones'}
@@ -336,7 +350,11 @@ export default function SessionPlay() {
             isDaily={isDaily}
             sessionId={sessionId}
             gameResult={gameResult}
-            onLeaderboard={() => navigate(isDaily ? '/leaderboards?tab=daily' : `/leaderboards?tab=session&session=${sessionId}`)}
+            onLeaderboard={() => {
+              if (isDaily) navigate('/leaderboards?tab=daily');
+              else if (isPack) navigate('/packs');
+              else navigate(`/leaderboards?tab=session&session=${sessionId}`);
+            }}
             onHome={() => navigate('/')}
           />
         ) : null}

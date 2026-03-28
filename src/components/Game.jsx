@@ -475,7 +475,12 @@ export default function Game({ tracks, penalty, token, apiBase, onFinish, postGa
 
   const next = async () => {
     if (player) { try { await player.pause(); } catch (_) {} }
-    setConfirmingPass(false); setUsedHints([]); setResult(null); setGuessing(false); setCurrentTime(0);
+    setConfirmingPass(false); 
+    setUsedHints([]); 
+    setResult(null); 
+    setGuessing(false); 
+    setSearchTerm('');
+    setCurrentTime(0);
     if (index + 1 < tracks.length) { setIndex((i) => i + 1); }
     else { setSummaryShown(true); }
   };
