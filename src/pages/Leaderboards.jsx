@@ -330,15 +330,17 @@ function GameCard({ g, onClickSession, onClickDaily }) {
                 : 'Reto del día'}
             </p>
           ) : g.playlistUrl ? (
-            <a
-              href={g.playlistUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="text-sm text-green-400 hover:text-green-300 underline underline-offset-2 truncate block transition"
-            >
-              🎵 {playlistName(g.playlistUrl)}
-            </a>
+            <span className="block truncate">
+              <a
+                href={g.playlistUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-sm text-green-400 hover:text-green-300 underline underline-offset-2 transition inline"
+              >
+                🎵 {playlistName(g.playlistUrl)}
+              </a>
+            </span>
           ) : (
             <p className="text-sm text-slate-500 truncate">Sesión personalizada</p>
           )}
