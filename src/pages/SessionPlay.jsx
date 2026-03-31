@@ -104,7 +104,23 @@ function buildCustomShareText(gameResult, sessionId) {
   ].join('\n');
 }
  
-function ShareButton({ text, isDaily }) {
+function buildPackShareText(gameResult, packName) {
+  const { totalTime, perTrack } = gameResult;
+  const emojiRow = perTrack.map((t) => t.guessed ? '✅' : t.skipped ? '⏭️' : '❌').join('');
+  const guessed = perTrack.filter((t) => t.guessed).length;
+  return [
+    `🎵 SpotifyQuiz · ${packName ?? 'Pack'}`,
+    ``,
+    emojiRow,
+    ``,
+    `🎯 ${guessed}/${perTrack.length} canciones · ⏱️ ${totalTime.toFixed(2)}s`,
+    ``,
+    `¿Puedes superarme? → ${FRONTEND_URL}`,
+  ].join('\n');
+}
+ 
+function ShareButton({ text, isDaily, isPack }) {
+ 
   const [copied, setCopied] = useState(false);
  
   const handleShare = async () => {
@@ -130,7 +146,9 @@ function ShareButton({ text, isDaily }) {
           ? 'bg-green-500/20 border border-green-500/50 text-green-400'
           : isDaily
             ? 'bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300'
-            : 'bg-slate-700 hover:bg-slate-600 border border-slate-600 text-slate-200'
+            : isPack
+              ? 'bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300'
+              : 'bg-slate-700 hover:bg-slate-600 border border-slate-600 text-slate-200'
       }`}
     >
       {copied ? (
@@ -145,37 +163,47 @@ function ShareButton({ text, isDaily }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185z" />
           </svg>
-          {isDaily ? 'Compartir resultado' : 'Compartir sesión'}
+          {isDaily ? 'Compartir resultado' : isPack ? 'Compartir resultado' : 'Compartir sesión'}
         </>
       )}
     </button>
   );
 }
  
-function PostGameActions({ isDaily, sessionId, gameResult, onLeaderboard, onHome }) {
+function PostGameActions({ isDaily, isPack, packName, sessionId, gameResult, onLeaderboard, onHome }) {
   const shareText = isDaily
     ? buildDailyShareText(gameResult)
-    : buildCustomShareText(gameResult, sessionId);
+    : isPack
+      ? buildPackShareText(gameResult, packName)
+      : buildCustomShareText(gameResult, sessionId);
+ 
+  const previewStyle = isDaily
+    ? 'bg-purple-500/5 border-purple-500/20 text-purple-200'
+    : isPack
+      ? 'bg-blue-500/5 border-blue-500/20 text-blue-200'
+      : 'bg-teal-800/20 border-teal-700 text-teal-300';
+ 
+  const leaderboardLabel = isDaily
+    ? '🏆 Ver ranking de hoy'
+    : isPack
+      ? '📦 Más packs'
+      : '🏆 Ver ranking de esta sesión';
  
   return (
     <div className="mt-10 pt-8 border-t border-slate-800">
       {/* Share preview */}
-      <div className={`mb-6 p-4 rounded-2xl border font-mono text-sm whitespace-pre-wrap leading-relaxed ${
-        isDaily
-          ? 'bg-purple-500/5 border-purple-500/20 text-purple-200'
-          : 'bg-slate-800/60 border-slate-700 text-slate-300'
-      }`}>
+      <div className={`mb-6 p-4 rounded-2xl border font-mono text-sm whitespace-pre-wrap leading-relaxed ${previewStyle}`}>
         {shareText}
       </div>
  
       {/* Action buttons */}
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
-        <ShareButton text={shareText} isDaily={isDaily} />
+        <ShareButton text={shareText} isDaily={isDaily} isPack={isPack} />
         <button
           onClick={onLeaderboard}
           className="flex items-center justify-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-400 text-black font-bold rounded-xl transition"
         >
-          🏆 {isDaily ? 'Ver ranking de hoy' : 'Ver ranking de esta sesión'}
+          {leaderboardLabel}
         </button>
         <button
           onClick={onHome}
@@ -348,6 +376,8 @@ export default function SessionPlay() {
         postGameSlot={finished && gameResult ? (
           <PostGameActions
             isDaily={isDaily}
+            isPack={isPack}
+            packName={packName}
             sessionId={sessionId}
             gameResult={gameResult}
             onLeaderboard={() => {
