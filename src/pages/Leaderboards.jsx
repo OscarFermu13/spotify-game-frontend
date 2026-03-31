@@ -135,9 +135,7 @@ function TrackResultCard({ t, penalty }) {
     : (t.artists ?? '');
   const coverUrl = t.albumJson?.images?.[0]?.url ?? null;
 
-  const baseTime = t.guessed
-    ? t.timeTaken
-    : t.timeTaken - t.penaltyCost;
+  const baseTime = t.timeTaken;
 
   return (
     <div className={`rounded-2xl border overflow-hidden ${
