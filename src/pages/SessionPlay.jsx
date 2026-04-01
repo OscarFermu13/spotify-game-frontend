@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import Game from '../components/Game';
+import { API_BASE } from '../config/env';
 
 axios.defaults.withCredentials = true;
 
-const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:4000';
 const DEFAULT_PENALTY = 5;
 
 function EqBars() {
@@ -235,12 +235,12 @@ export default function SessionPlay() {
     const loadAndJoinSession = async () => {
       try {
         setLoading(true);
-        const sessionResp = await axios.get(`${API}/api/session/${sessionId}`);
+        const sessionResp = await axios.get(`${API_BASE}/api/session/${sessionId}`);
         setSession(sessionResp.data);
 
         let gameId, completed;
         if (sessionResp.data.source === 'daily') {
-          const dailyResp = await axios.get(`${API}/api/daily`);
+          const dailyResp = await axios.get(`${API_BASE}/api/daily`);
           gameId = dailyResp.data.gameId;
           completed = dailyResp.data.alreadyCompleted;
         } else {
@@ -249,7 +249,7 @@ export default function SessionPlay() {
             gameId = stateGameId;
             setPackName(location.state?.packName ?? null);
           } else {
-            const joinResp = await axios.post(`${API}/api/session/${sessionId}/join`);
+            const joinResp = await axios.post(`${API_BASE}/api/session/${sessionId}/join`);
             gameId = joinResp.data.gameId || joinResp.data.id || joinResp.data.game?.id;
           }
           completed = false;
@@ -283,7 +283,7 @@ export default function SessionPlay() {
     // Save results to backend
     if (gameId) {
       try {
-        await axios.post(`${API}/api/game/save`, {
+        await axios.post(`${API_BASE}/api/game/save`, {
           gameId,
           totalTime,
           tracks: perTrack,
@@ -369,7 +369,7 @@ export default function SessionPlay() {
         tracks={tracks}
         penalty={penalty}
         token={null}
-        apiBase={API}
+        apiBase={API_BASE}
         gameId={gameId}
         sessionId={sessionId}
         onFinish={handleFinish}
