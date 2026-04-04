@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE } from '../config/env';
 
-const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:4000';
 axios.defaults.withCredentials = true;
 
 function EqBars() {
@@ -161,7 +161,7 @@ export default function Packs() {
   const [filter, setFilter] = useState('all');  // 'all' | 'free' | 'premium'
 
   useEffect(() => {
-    axios.get(`${API}/api/packs`)
+    axios.get(`${API_BASE}/api/packs`)
       .then((r) => setPacks(r.data))
       .catch((e) => {
         if (e.response?.status === 401) navigate('/');
@@ -173,7 +173,7 @@ export default function Packs() {
   const handlePlay = useCallback(async (pack) => {
     setPlaying(pack.slug);
     try {
-      const { data } = await axios.post(`${API}/api/packs/${pack.slug}/play`);
+      const { data } = await axios.post(`${API_BASE}/api/packs/${pack.slug}/play`);
       // Navigate to session — SessionPlay already handles 'pack' source
       navigate(`/session/${data.sessionId}`, {
         state: { gameId: data.gameId, packName: data.packName, packSlug: data.packSlug },

@@ -2,8 +2,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE } from '../config/env';
 
-const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:4000';
 axios.defaults.withCredentials = true;
 
 const TABS = [
@@ -93,7 +93,7 @@ function GlobalTabLoader() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get(`${API}/api/leaderboard/global`)
+    axios.get(`${API_BASE}/api/leaderboard/global`)
       .then((r) => setData(r.data))
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -185,7 +185,7 @@ function GameDetailDrawer({ gameId, onClose }) {
   useEffect(() => {
     if (!gameId) return;
     setLoading(true); setError(null); setData(null);
-    axios.get(`${API}/api/leaderboard/game/${gameId}`)
+    axios.get(`${API_BASE}/api/leaderboard/game/${gameId}`)
       .then((r) => setData(r.data))
       .catch((e) => setError(e.response?.data?.error || 'Error cargando la partida.'))
       .finally(() => setLoading(false));
@@ -283,7 +283,7 @@ function SessionTab({ sessionId: initialId }) {
     if (!id?.trim()) return;
     setLoading(true); setError(null);
     try {
-      const resp = await axios.get(`${API}/api/leaderboard/session/${id.trim()}`);
+      const resp = await axios.get(`${API_BASE}/api/leaderboard/session/${id.trim()}`);
       setData(resp.data);
     } catch (e) {
       setError(e.response?.status === 404 ? 'Sesión no encontrada.' : 'Error cargando el ranking.');
@@ -548,7 +548,7 @@ function PersonalTab({ onNavigateToSession, onNavigateToDaily }) {
   const [filter, setFilter]   = useState('all');
  
   useEffect(() => {
-    axios.get(`${API}/api/leaderboard/me`)
+    axios.get(`${API_BASE}/api/leaderboard/me`)
       .then((r) => setData(r.data))
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -626,9 +626,9 @@ function DailyTab() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get(`${API}/api/daily`)
+    axios.get(`${API_BASE}/api/daily`)
       .then(async ({ data: daily }) => {
-        const lb = await axios.get(`${API}/api/leaderboard/session/${daily.sessionId}`);
+        const lb = await axios.get(`${API_BASE}/api/leaderboard/session/${daily.sessionId}`);
         setData({ ...lb.data, dailyDate: daily.dailyDate, playerCount: daily.playerCount, sessionId: daily.sessionId });
       })
       .catch((e) => {

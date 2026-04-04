@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE } from './config/env';
 
-const API = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:4000';
 axios.defaults.withCredentials = true;
 
 // ── Global 401 interceptor — redirect to home on session expiry ───────────────
@@ -219,15 +219,15 @@ export default function App() {
     const check = async () => {
       try {
         const [meResp, playlistsResp] = await Promise.all([
-          axios.get(`${API}/api/me`),
-          axios.get(`${API}/api/me/playlists`),
+          axios.get(`${API_BASE}/api/me`),
+          axios.get(`${API_BASE}/api/me/playlists`),
         ]);
         setUser({ name: meResp.data.displayName || meResp.data.spotifyId });
         setPlaylists(playlistsResp.data.playlists || []);
         setIsAuthenticated(true);
         // Fire-and-forget secondary fetches
-        axios.get(`${API}/api/daily`).then((r) => setDaily(r.data)).catch(() => {});
-        axios.get(`${API}/api/packs`).then((r) => setPacks(r.data)).catch(() => {});
+        axios.get(`${API_BASE}/api/daily`).then((r) => setDaily(r.data)).catch(() => {});
+        axios.get(`${API_BASE}/api/packs`).then((r) => setPacks(r.data)).catch(() => {});
       } catch {
         setIsAuthenticated(false);
       } finally {
@@ -237,14 +237,24 @@ export default function App() {
     check();
   }, []);
 
-  const handleLogin  = (sw = false) => { window.location.href = sw ? `${API}/auth/login?switch_account=true` : `${API}/auth/login`; };
-  const handleLogout = () => { setIsAuthenticated(false); setUser(null); setPlaylists([]); setDaily(null); setPacks([]); };
+  const handleLogin  = (sw = false) => { window.location.href = sw ? `${API_BASE}/auth/login?switch_account=true` : `${API_BASE}/auth/login`; };
+  const handleLogout = async () => {
+    try {
+      await axios.post(`${API_BASE}/auth/logout`);
+    } catch (_) {
+    }
+    setIsAuthenticated(false);
+    setUser(null);
+    setPlaylists([]);
+    setDaily(null);
+    setPacks([]);
+  };
 
   // ── Pack play ─────────────────────────────────────────────────────────────
   const handlePlayPack = useCallback(async (pack) => {
     setPlayingPack(pack.slug);
     try {
-      const { data } = await axios.post(`${API}/api/packs/${pack.slug}/play`);
+      const { data } = await axios.post(`${API_BASE}/api/packs/${pack.slug}/play`);
       navigate(`/session/${data.sessionId}`, {
         state: { gameId: data.gameId, packName: data.packName, packSlug: data.packSlug },
       });
@@ -261,7 +271,7 @@ export default function App() {
     if (!url) { alert('Selecciona o introduce una playlist.'); return; }
     setCreating(true);
     try {
-      const resp = await axios.post(`${API}/api/session/create`, { playlistUrl: url, isPublic: true, count, penalty });
+      const resp = await axios.post(`${API_BASE}/api/session/create`, { playlistUrl: url, isPublic: true, count, penalty });
       navigate(`/session/${resp.data.sessionId}`);
     } catch (e) {
       alert('No se pudo crear la sesión.');
