@@ -1,14 +1,13 @@
-// src/components/Game.jsx
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import useSpotifyPlayer from '../hooks/useSpotifyPlayer';
 
 const HINTS = [
-  { type: 'title_length',  label: 'Nº de letras del título', cost: 2, icon: '🔢' },
-  { type: 'release_year',  label: 'Año de lanzamiento',       cost: 2, icon: '📅' },
-  { type: 'artist_initial',label: 'Inicial del artista',      cost: 2, icon: '🎤' },
-  { type: 'title_initial', label: 'Inicial del título',       cost: 2, icon: '🔤' },
-  { type: 'album_cover',   label: 'Portada del álbum',        cost: 2, icon: '🖼️' },
+  { type: 'title_length', label: 'Nº de letras del título', cost: 2, icon: '🔢' },
+  { type: 'release_year', label: 'Año de lanzamiento', cost: 2, icon: '📅' },
+  { type: 'artist_initial', label: 'Inicial del artista', cost: 2, icon: '🎤' },
+  { type: 'title_initial', label: 'Inicial del título', cost: 2, icon: '🔤' },
+  { type: 'album_cover', label: 'Portada del álbum', cost: 2, icon: '🖼️' },
 ];
 
 const BLUR_LEVELS = ['blur-3xl', 'blur-2xl', 'blur-xl', 'blur-lg', 'blur-sm', 'blur-none'];
@@ -43,11 +42,10 @@ function TrackCounter({ index, total }) {
         {Array.from({ length: total }).map((_, i) => (
           <div
             key={i}
-            className={`h-1 rounded-full transition-all duration-500 ${
-              i < index ? 'bg-green-400 w-6' :
-              i === index ? 'bg-green-400 w-10' :
-              'bg-slate-700 w-6'
-            }`}
+            className={`h-1 rounded-full transition-all duration-500 ${i < index ? 'bg-green-400 w-6' :
+                i === index ? 'bg-green-400 w-10' :
+                  'bg-slate-700 w-6'
+              }`}
           />
         ))}
       </div>
@@ -146,11 +144,10 @@ function PlayControls({ playing, ready, result, confirmingPass, onPlay, onPause,
       <button
         onClick={onGuess}
         disabled={!!result}
-        className={`px-5 py-2.5 font-bold rounded-xl transition disabled:opacity-40 ${
-          guessing
+        className={`px-5 py-2.5 font-bold rounded-xl transition disabled:opacity-40 ${guessing
             ? 'bg-slate-700 border border-slate-600 text-slate-300'
             : 'bg-white hover:bg-slate-100 text-slate-900'
-        }`}
+          }`}
       >
         {guessing ? 'Cancelar' : 'Adivinar'}
       </button>
@@ -256,11 +253,10 @@ function ResultBanner({ result, onNext }) {
     : correctTrack.artists;
 
   return (
-    <div className={`mt-8 rounded-2xl border p-6 text-center ${
-      correct
+    <div className={`mt-8 rounded-2xl border p-6 text-center ${correct
         ? 'bg-green-500/20 border-green-500/50'
         : 'bg-red-500/20 border-red-500/50'
-    }`}>
+      }`}>
       <div className="text-4xl mb-3">{correct ? '✅' : skipped ? '⏭️' : '❌'}</div>
       <p className={`text-lg font-black mb-1 ${correct ? 'text-green-400' : 'text-red-400'}`} style={{ fontFamily: "'Syne', sans-serif" }}>
         {correct ? '¡Correcto!' : skipped ? 'Pasada' : 'Incorrecto'}
@@ -307,11 +303,10 @@ function SummaryCard({ t, penalty, i }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <span className="text-xs font-bold tracking-widest uppercase text-slate-600">#{i + 1}</span>
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-              t.guessed ? 'bg-green-500/20 text-green-400' :
-              t.skipped ? 'bg-slate-600/40 text-slate-400' :
-              'bg-red-500/20 text-red-400'
-            }`}>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${t.guessed ? 'bg-green-500/20 text-green-400' :
+                t.skipped ? 'bg-slate-600/40 text-slate-400' :
+                  'bg-red-500/20 text-red-400'
+              }`}>
               {t.guessed ? 'Correcto' : t.skipped ? 'Pasada' : 'Fallo'}
             </span>
           </div>
@@ -421,7 +416,7 @@ export default function Game({ tracks, penalty, token, apiBase, onFinish, postGa
       playStartRef.current = null;
     }
     setPlaying(false);
-    try { await player.pause(); } catch (_) {}
+    try { await player.pause(); } catch (_) { }
   };
 
   const freezeTimer = () => {
@@ -474,11 +469,11 @@ export default function Game({ tracks, penalty, token, apiBase, onFinish, postGa
   };
 
   const next = async () => {
-    if (player) { try { await player.pause(); } catch (_) {} }
-    setConfirmingPass(false); 
-    setUsedHints([]); 
-    setResult(null); 
-    setGuessing(false); 
+    if (player) { try { await player.pause(); } catch (_) { } }
+    setConfirmingPass(false);
+    setUsedHints([]);
+    setResult(null);
+    setGuessing(false);
     setSearchTerm('');
     setCurrentTime(0);
     if (index + 1 < tracks.length) { setIndex((i) => i + 1); }
@@ -506,7 +501,7 @@ export default function Game({ tracks, penalty, token, apiBase, onFinish, postGa
       try {
         const res = await axios.get(`${apiBase}/api/spotify/search`, { headers: authHeaders(), params: { q: searchTerm, type: 'track', limit: 5 } });
         setSearchResults(res.data.tracks.items);
-      } catch (_) {}
+      } catch (_) { }
     }, 400);
     return () => clearTimeout(t);
   }, [searchTerm, apiBase, authHeaders]);
@@ -514,7 +509,14 @@ export default function Game({ tracks, penalty, token, apiBase, onFinish, postGa
   // onFinish
   useEffect(() => {
     if (!summaryShown || typeof onFinish !== 'function') return;
-    const perTrack = perTrackTime.map((t) => ({ trackId: t.trackId, guessed: !!t.guessed, timeTaken: Number(t.timeTaken || 0) }));
+    const perTrack = perTrackTime.map((t) => ({
+      trackId: t.trackId,
+      guessed: !!t.guessed,
+      skipped: !!t.skipped,
+      timeTaken: Number(t.timeTaken || 0),
+      baseTime: Number(t.baseTime || 0),
+      hintCost: Number(t.hintCost || 0),
+    }));
     onFinish({ totalTime, perTrack });
   }, [summaryShown]);
 
@@ -570,7 +572,7 @@ export default function Game({ tracks, penalty, token, apiBase, onFinish, postGa
           <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
           {/* Grooves */}
           {[44, 36, 28, 20].map((s) => (
-            <div key={s} className="absolute inset-0 rounded-full border border-slate-800" style={{ margin: `${(144-s*2)/8}%` }} />
+            <div key={s} className="absolute inset-0 rounded-full border border-slate-800" style={{ margin: `${(144 - s * 2) / 8}%` }} />
           ))}
           {/* Center label */}
           <div className="absolute inset-0 flex items-center justify-center">

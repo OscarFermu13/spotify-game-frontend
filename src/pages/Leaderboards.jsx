@@ -1,4 +1,3 @@
-// src/pages/Leaderboards.jsx
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
@@ -7,10 +6,10 @@ import { API_BASE } from '../config/env';
 axios.defaults.withCredentials = true;
 
 const TABS = [
-  { key: 'daily',   label: '🗓️ Hoy' },
-  { key: 'global',  label: '🌍 Global' },
+  { key: 'daily', label: '🗓️ Hoy' },
+  { key: 'global', label: '🌍 Global' },
   { key: 'session', label: '🎮 Sesión' },
-  { key: 'me',      label: '👤 Personal' },
+  { key: 'me', label: '👤 Personal' },
 ];
 
 function formatTime(s) {
@@ -36,7 +35,7 @@ function medal(rank) {
 function EqBars() {
   return (
     <div className="flex items-end gap-[3px] h-5" aria-hidden="true">
-      {[1,2,3,4,5,6,7].map((i) => (
+      {[1, 2, 3, 4, 5, 6, 7].map((i) => (
         <div
           key={i}
           className="w-[3px] rounded-full bg-green-400 opacity-80"
@@ -135,14 +134,11 @@ function TrackResultCard({ t, penalty }) {
     : (t.artists ?? '');
   const coverUrl = t.albumJson?.images?.[0]?.url ?? null;
 
-  const baseTime = t.timeTaken;
-
   return (
-    <div className={`rounded-2xl border overflow-hidden ${
-      t.guessed
+    <div className={`rounded-2xl border overflow-hidden ${t.guessed
         ? 'border-green-500/60 bg-green-500/15'
         : 'border-red-500/60 bg-red-500/15'
-    }`}>
+      }`}>
       <div className="flex items-center gap-4 p-4">
         {coverUrl ? (
           <img src={coverUrl} alt="" className="w-14 h-14 rounded-xl flex-shrink-0 shadow" />
@@ -153,11 +149,10 @@ function TrackResultCard({ t, penalty }) {
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-              t.guessed   ? 'bg-green-500/20 text-green-400' :
-              t.skipped   ? 'bg-slate-600/40 text-slate-400' :
-                            'bg-red-500/20 text-red-400'
-            }`}>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${t.guessed ? 'bg-green-500/20 text-green-400' :
+                t.skipped ? 'bg-slate-600/40 text-slate-400' :
+                  'bg-red-500/20 text-red-400'
+              }`}>
               {t.guessed ? 'Correcto' : t.skipped ? 'Pasada' : 'Fallo'}
             </span>
           </div>
@@ -165,8 +160,13 @@ function TrackResultCard({ t, penalty }) {
           <p className="text-xs text-slate-500 truncate">{artistStr}</p>
         </div>
       </div>
+
+      {/* NUEVO: desglose de tiempo real */}
       <div className="px-4 py-2.5 border-t border-slate-700/40 flex flex-wrap gap-x-3 gap-y-0.5">
-        <span className="text-xs text-slate-400 font-mono">{baseTime.toFixed(2)}s</span>
+        <span className="text-xs text-slate-400 font-mono">{t.baseTime.toFixed(2)}s</span>
+        {t.hintCost > 0 && (
+          <span className="text-xs text-amber-500 font-mono">+{t.hintCost.toFixed(2)}s pistas</span>
+        )}
         {!t.guessed && t.penaltyCost > 0 && (
           <span className="text-xs text-red-400 font-mono">
             +{t.penaltyCost}s {t.skipped ? 'por pasar' : 'penalización'}
@@ -248,8 +248,8 @@ function GameDetailDrawer({ gameId, onClose }) {
               <div className="grid grid-cols-3 gap-3 mb-6">
                 {[
                   { label: 'Tiempo total', value: `${data.totalTime.toFixed(2)}s` },
-                  { label: 'Aciertos',     value: `${data.guessed}/${data.total}` },
-                  { label: 'Precisión',    value: `${data.accuracy}%` },
+                  { label: 'Aciertos', value: `${data.guessed}/${data.total}` },
+                  { label: 'Precisión', value: `${data.accuracy}%` },
                 ].map((s) => (
                   <div key={s.label} className="bg-slate-800/60 border border-slate-700 rounded-2xl p-3 text-center">
                     <div className="text-xl font-black text-white" style={{ fontFamily: "'Syne', sans-serif" }}>{s.value}</div>
@@ -375,7 +375,7 @@ function SessionTab({ sessionId: initialId }) {
 
 // ── Personal tab ──────────────────────────────────────────────────────────────
 // ── Helpers for PersonalTab ───────────────────────────────────────────────────
- 
+
 function calcDailyStreak(history) {
   // history assumed sorted newest-first; streak = consecutive days with a daily entry
   const dailyDates = history
@@ -392,7 +392,7 @@ function calcDailyStreak(history) {
   }
   return streak;
 }
- 
+
 function StatsGrid({ history }) {
   const allStats = (arr) => {
     if (!arr.length) return null;
@@ -404,22 +404,22 @@ function StatsGrid({ history }) {
       accuracy: Math.round(arr.reduce((a, g) => a + (g.accuracy || 0), 0) / arr.length),
     };
   };
- 
-  const all    = allStats(history);
-  const daily  = allStats(history.filter((g) => g.source === 'daily'));
-  const pack   = allStats(history.filter((g) => g.source === 'pack'));
+
+  const all = allStats(history);
+  const daily = allStats(history.filter((g) => g.source === 'daily'));
+  const pack = allStats(history.filter((g) => g.source === 'pack'));
   const custom = allStats(history.filter((g) => g.source === 'custom'));
   const streak = calcDailyStreak(history);
- 
+
   return (
     <div className="mb-8 space-y-3">
       {/* Top row — global stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Partidas totales', value: all?.count ?? 0 },
-          { label: 'Mejor tiempo',     value: formatTime(all?.best) },
-          { label: 'Tiempo medio',     value: formatTime(all?.avg) },
-          { label: 'Precisión media',  value: `${all?.accuracy ?? 0}%` },
+          { label: 'Mejor tiempo', value: formatTime(all?.best) },
+          { label: 'Tiempo medio', value: formatTime(all?.avg) },
+          { label: 'Precisión media', value: `${all?.accuracy ?? 0}%` },
         ].map((s) => (
           <div key={s.label} className="bg-slate-800/60 border border-slate-700 rounded-2xl p-4 text-center">
             <div className="text-2xl font-black text-white" style={{ fontFamily: "'Syne', sans-serif" }}>{s.value}</div>
@@ -427,7 +427,7 @@ function StatsGrid({ history }) {
           </div>
         ))}
       </div>
- 
+
       {/* Second row — daily / pack / custom + streak */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-purple-500/10 border border-purple-500/30 rounded-2xl p-3 text-center">
@@ -454,31 +454,31 @@ function StatsGrid({ history }) {
     </div>
   );
 }
- 
+
 function GameCard({ g, onClickSession, onClickDaily, onClickPack }) {
-  const isDaily  = g.source === 'daily';
-  const isPack   = g.source === 'pack';
-  const dateStr  = new Date(g.playedAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
- 
+  const isDaily = g.source === 'daily';
+  const isPack = g.source === 'pack';
+  const dateStr = new Date(g.playedAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+
   const handleClick = isDaily ? onClickDaily : isPack ? onClickPack : onClickSession;
- 
+
   const cardStyle = isDaily
     ? 'bg-purple-500/10 border-purple-500/25 hover:bg-purple-500/20 hover:border-purple-500/50'
     : isPack
       ? 'bg-blue-500/10 border-blue-500/25 hover:bg-blue-500/20 hover:border-blue-500/50'
       : 'bg-teal-800/20 border-teal-700/50 hover:bg-teal-800/40 hover:border-teal-600/50';
- 
+
   const badgeStyle = isDaily
     ? 'bg-purple-500/20 text-purple-300'
     : isPack
       ? 'bg-blue-500/20 text-blue-300'
       : 'bg-teal-500/20 text-teal-300';
- 
+
   const arrowColor = isDaily ? 'text-purple-400' : isPack ? 'text-blue-400' : 'text-teal-400';
   const arrowLabel = isDaily ? 'Ver ranking →' : isPack ? 'Ver sesión →' : 'Ver sesión →';
- 
+
   const badgeLabel = isDaily ? '🗓️ Daily' : isPack ? '📦 Pack' : '🎧 Custom';
- 
+
   return (
     <div
       onClick={handleClick}
@@ -491,17 +491,16 @@ function GameCard({ g, onClickSession, onClickDaily, onClickPack }) {
         </span>
         <span className="text-xs text-slate-600">{dateStr}</span>
       </div>
- 
+
       {/* Main stats row */}
       <div className="flex items-center gap-4 px-4 pb-3">
-        <div className={`relative w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-black ${
-          g.accuracy === 100 ? 'bg-green-500/20 text-green-400' :
-          g.accuracy >= 60  ? 'bg-amber-500/20 text-amber-400' :
-                              'bg-red-500/20 text-red-400'
-        }`} style={{ fontFamily: "'Syne', sans-serif" }}>
+        <div className={`relative w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-black ${g.accuracy === 100 ? 'bg-green-500/20 text-green-400' :
+            g.accuracy >= 60 ? 'bg-amber-500/20 text-amber-400' :
+              'bg-red-500/20 text-red-400'
+          }`} style={{ fontFamily: "'Syne', sans-serif" }}>
           {g.accuracy}%
         </div>
- 
+
         <div className="flex-1 min-w-0">
           {isDaily ? (
             <p className="text-sm font-semibold text-purple-300 truncate">
@@ -530,7 +529,7 @@ function GameCard({ g, onClickSession, onClickDaily, onClickPack }) {
           )}
           <p className="text-xs text-slate-500 mt-0.5">{g.guessed}/{g.total} canciones acertadas</p>
         </div>
- 
+
         <div className="text-right shrink-0">
           <p className="text-sm font-mono font-semibold text-slate-100">{formatTime(g.totalTime)}</p>
           <p className={`text-xs mt-0.5 transition ${arrowColor} opacity-0 group-hover:opacity-100`}>
@@ -541,19 +540,19 @@ function GameCard({ g, onClickSession, onClickDaily, onClickPack }) {
     </div>
   );
 }
- 
+
 function PersonalTab({ onNavigateToSession, onNavigateToDaily }) {
-  const [data, setData]   = useState(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter]   = useState('all');
- 
+  const [filter, setFilter] = useState('all');
+
   useEffect(() => {
     axios.get(`${API_BASE}/api/leaderboard/me`)
       .then((r) => setData(r.data))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
- 
+
   if (loading) return <Spinner label="Cargando historial…" />;
   if (!data?.history?.length) return (
     <div className="text-center py-16">
@@ -561,33 +560,32 @@ function PersonalTab({ onNavigateToSession, onNavigateToDaily }) {
       <p className="text-slate-500">Todavía no has completado ninguna partida.</p>
     </div>
   );
- 
+
   const { history } = data;
-  const filtered = filter === 'all'    ? history
-    : filter === 'daily'  ? history.filter((g) => g.source === 'daily')
-    : filter === 'pack'   ? history.filter((g) => g.source === 'pack')
-    : history.filter((g) => g.source === 'custom');
- 
+  const filtered = filter === 'all' ? history
+    : filter === 'daily' ? history.filter((g) => g.source === 'daily')
+      : filter === 'pack' ? history.filter((g) => g.source === 'pack')
+        : history.filter((g) => g.source === 'custom');
+
   return (
     <div>
       <StatsGrid history={history} />
- 
+
       {/* Filter pills */}
       <div className="flex gap-2 mb-5">
         {[
-          { key: 'all',    label: 'Todas',   count: history.length },
-          { key: 'daily',  label: '🗓️ Daily', count: history.filter((g) => g.source === 'daily').length },
-          { key: 'pack',   label: '📦 Packs',  count: history.filter((g) => g.source === 'pack').length },
+          { key: 'all', label: 'Todas', count: history.length },
+          { key: 'daily', label: '🗓️ Daily', count: history.filter((g) => g.source === 'daily').length },
+          { key: 'pack', label: '📦 Packs', count: history.filter((g) => g.source === 'pack').length },
           { key: 'custom', label: '🎧 Custom', count: history.filter((g) => g.source === 'custom').length },
         ].map((f) => (
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold transition ${
-              filter === f.key
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold transition ${filter === f.key
                 ? 'bg-slate-700 text-white'
                 : 'text-slate-500 hover:text-slate-300'
-            }`}
+              }`}
           >
             {f.label}
             <span className={`text-xs px-1.5 py-0.5 rounded-full ${filter === f.key ? 'bg-slate-600 text-slate-300' : 'bg-slate-800 text-slate-600'}`}>
@@ -596,7 +594,7 @@ function PersonalTab({ onNavigateToSession, onNavigateToDaily }) {
           </button>
         ))}
       </div>
- 
+
       {/* Cards */}
       {filtered.length === 0 ? (
         <p className="text-center text-slate-500 py-8">No hay partidas en esta categoría.</p>
@@ -638,7 +636,7 @@ function DailyTab() {
   }, []);
 
   if (loading) return <Spinner label="Cargando reto de hoy…" />;
-  if (error)   return <p className="text-center text-red-400 py-8">{error}</p>;
+  if (error) return <p className="text-center text-red-400 py-8">{error}</p>;
 
   const dateStr = data?.dailyDate
     ? new Date(data.dailyDate).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
@@ -748,11 +746,10 @@ export default function Leaderboards() {
             <button
               key={t.key}
               onClick={() => handleTab(t.key)}
-              className={`flex-1 py-2 text-sm font-semibold rounded-xl transition ${
-                activeTab === t.key
+              className={`flex-1 py-2 text-sm font-semibold rounded-xl transition ${activeTab === t.key
                   ? 'bg-slate-700 text-white shadow'
                   : 'text-slate-500 hover:text-slate-300'
-              }`}
+                }`}
             >
               {t.label}
             </button>
@@ -761,10 +758,10 @@ export default function Leaderboards() {
 
         {/* Tab content */}
         <div>
-          {activeTab === 'daily'   && <DailyTab />}
-          {activeTab === 'global'  && <GlobalTabLoader />}
+          {activeTab === 'daily' && <DailyTab />}
+          {activeTab === 'global' && <GlobalTabLoader />}
           {activeTab === 'session' && <SessionTab sessionId={sessionFromUrl} />}
-          {activeTab === 'me'      && (
+          {activeTab === 'me' && (
             <PersonalTab
               onNavigateToSession={(sid) => setSearchParams({ tab: 'session', session: sid })}
               onNavigateToDaily={() => setSearchParams({ tab: 'daily' })}
