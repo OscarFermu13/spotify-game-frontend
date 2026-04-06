@@ -1,6 +1,7 @@
+// src/components/leaderboard/GameDetailDrawer.jsx
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { API_BASE } from '../../config/env.js';
+import { API_BASE } from '../../config/env';
 import TrackResultCard from './TrackResultCard';
 
 export default function GameDetailDrawer({ gameId, onClose }) {
@@ -13,7 +14,18 @@ export default function GameDetailDrawer({ gameId, onClose }) {
         setLoading(true); setError(null); setData(null);
         axios.get(`${API_BASE}/api/leaderboard/game/${gameId}`)
             .then((r) => setData(r.data))
-            .catch((e) => setError(e.response?.data?.error || 'Error cargando la partida.'))
+            .catch((e) => {
+                const status = e.response?.status;
+                const code = e.response?.data?.code;
+
+                if (status === 403 || code === 'ACCESS_DENIED') {
+                    setError('No tienes permiso para ver esta partida.');
+                } else if (status === 404 || code === 'NOT_FOUND') {
+                    setError('Esta partida no existe o todavía no ha terminado.');
+                } else {
+                    setError('Error cargando la partida. Inténtalo de nuevo.');
+                }
+            })
             .finally(() => setLoading(false));
     }, [gameId]);
 
@@ -28,7 +40,6 @@ export default function GameDetailDrawer({ gameId, onClose }) {
             <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40" onClick={onClose} />
             <div className="fixed inset-y-0 right-0 w-full sm:w-[640px] bg-slate-900 border-l border-slate-800 z-50 flex flex-col shadow-2xl">
 
-                {/* Header */}
                 <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800 flex-shrink-0">
                     <div>
                         <h2 className="text-lg font-black text-white" style={{ fontFamily: "'Syne', sans-serif" }}>
@@ -47,7 +58,6 @@ export default function GameDetailDrawer({ gameId, onClose }) {
                     </button>
                 </div>
 
-                {/* Body */}
                 <div className="flex-1 overflow-y-auto px-6 py-5">
                     {loading && (
                         <div className="flex items-center justify-center py-16">
@@ -58,7 +68,15 @@ export default function GameDetailDrawer({ gameId, onClose }) {
                         </div>
                     )}
 
-                    {error && <p className="text-center text-red-400 py-8">{error}</p>}
+                    {error && (
+                        <div className="text-center py-8">
+                            <p className="text-red-400 mb-2">{error}</p>
+                            <button onClick={onClose}
+                                className="text-sm text-slate-500 hover:text-slate-300 transition underline underline-offset-2">
+                                Cerrar
+                            </button>
+                        </div>
+                    )}
 
                     {data && !loading && (
                         <>

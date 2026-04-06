@@ -1,3 +1,4 @@
+// src/hooks/useHomeData.js
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../config/env';
@@ -20,9 +21,27 @@ export default function useHomeData() {
         setUser({ name: meResp.data.displayName || meResp.data.spotifyId });
         setPlaylists(playlistsResp.data.playlists || []);
         setIsAuthenticated(true);
-        axios.get(`${API_BASE}/api/daily`).then((r) => setDaily(r.data)).catch(() => { });
-        axios.get(`${API_BASE}/api/packs`).then((r) => setPacks(r.data)).catch(() => { });
-      } catch {
+
+        axios.get(`${API_BASE}/api/daily`)
+          .then((r) => setDaily(r.data))
+          .catch((e) => {
+            if (e.response?.status !== 401) {
+              console.error('[useHomeData] Failed to fetch daily:', e.response?.data || e.message);
+            }
+          });
+
+        axios.get(`${API_BASE}/api/packs`)
+          .then((r) => setPacks(r.data))
+          .catch((e) => {
+            if (e.response?.status !== 401) {
+              console.error('[useHomeData] Failed to fetch packs:', e.response?.data || e.message);
+            }
+          });
+
+      } catch (e) {
+        if (e.response?.status !== 401) {
+          console.error('[useHomeData] Auth check failed:', e.response?.data || e.message);
+        }
         setIsAuthenticated(false);
       } finally {
         setAuthChecking(false);
@@ -34,7 +53,9 @@ export default function useHomeData() {
   const logout = async () => {
     try {
       await axios.post(`${API_BASE}/auth/logout`);
-    } catch (_) { }
+    } catch (e) {
+      console.error('[useHomeData] Logout failed:', e.response?.data || e.message);
+    }
     setIsAuthenticated(false);
     setUser(null);
     setPlaylists([]);
@@ -42,5 +63,5 @@ export default function useHomeData() {
     setPacks([]);
   };
 
-  return { user, daily, packs, playlists, isAuthenticated, authChecking, logout, setDaily, setPacks };
+  return { user, daily, packs, playlists, isAuthenticated, authChecking, logout };
 }
