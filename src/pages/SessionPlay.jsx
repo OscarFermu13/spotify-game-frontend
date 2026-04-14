@@ -9,8 +9,6 @@ import PostGameActions from '../components/sessionPlay/PostGameActions';
 import Game from '../components/Game';
 import useSessionLoad from '../hooks/useSessionLoad';
 
-axios.defaults.withCredentials = true;
-
 export default function SessionPlay() {
   const { id: sessionId } = useParams();
   const navigate = useNavigate();

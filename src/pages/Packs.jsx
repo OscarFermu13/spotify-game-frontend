@@ -9,8 +9,6 @@ import Spinner   from '../components/Spinner';
 import PackCard  from '../components/packs/PackCard';
 import usePackPlay from '../hooks/usePackPlay';
 
-axios.defaults.withCredentials = true;
-
 const FILTERS = [
   { key: 'all',     label: 'Todos' },
   { key: 'free',    label: 'Gratis' },

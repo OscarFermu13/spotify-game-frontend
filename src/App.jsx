@@ -12,23 +12,6 @@ import useHomeData from './hooks/useHomeData';
 import useCreateSession from './hooks/useCreateSession';
 import usePackPlay from './hooks/usePackPlay';
 
-axios.defaults.withCredentials = true;
-
-axios.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      const isAuthRoute = ['/auth/login', '/auth/callback'].some((p) =>
-        window.location.pathname.startsWith(p)
-      );
-      if (!isAuthRoute && window.location.pathname !== '/') {
-        window.location.href = '/';
-      }
-    }
-    return Promise.reject(err);
-  }
-);
-
 const inputCls = "w-full px-4 py-3 rounded-xl border border-slate-800 bg-slate-800/50 text-slate-100 placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/40 focus:border-green-500/40 transition disabled:opacity-50";
 const selectCls = "w-full px-3 py-2.5 rounded-xl border border-slate-800 bg-slate-800/50 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/40 focus:border-green-500/40 transition disabled:opacity-50";
 

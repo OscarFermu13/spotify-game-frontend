@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
+import './config/axios';
 
 import App from './App'
 import SessionPlay from './pages/SessionPlay'
@@ -24,9 +25,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               </h1>
             </div>
           </div>
-        }
-        />
+        } />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
-)
+);
