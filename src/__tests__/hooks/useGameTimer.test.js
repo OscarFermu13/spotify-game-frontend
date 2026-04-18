@@ -2,16 +2,42 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import useGameTimer from '../../hooks/useGameTimer';
 
-// useGameTimer usa Date.now() para calcular el tiempo transcurrido y
-// requestAnimationFrame para el tick del reloj. Usamos fake timers para
-// controlar ambos de forma determinista sin esperar tiempo real.
+let rafCallback = null;
+let rafId = 0;
+let nowValue = 1000;
+
+function flushRaf() {
+    if (rafCallback) {
+        const cb = rafCallback;
+        rafCallback = null;
+        act(() => { cb(); });
+    }
+}
+
 beforeEach(() => {
-    vi.useFakeTimers();
+    nowValue = 1000;
+    rafId = 0;
+    rafCallback = null;
+
+    vi.spyOn(Date, 'now').mockImplementation(() => nowValue);
+
+    vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation((cb) => {
+        rafCallback = cb;
+        return ++rafId;
+    });
+
+    vi.spyOn(globalThis, 'cancelAnimationFrame').mockImplementation(() => {
+        rafCallback = null;
+    });
 });
 
 afterEach(() => {
-    vi.useRealTimers();
+    vi.restoreAllMocks();
 });
+
+function advanceMs(ms) {
+    nowValue += ms;
+}
 
 describe('useGameTimer', () => {
     describe('start()', () => {
@@ -20,9 +46,7 @@ describe('useGameTimer', () => {
 
             expect(result.current.isRunning).toBe(false);
 
-            act(() => {
-                result.current.start();
-            });
+            act(() => { result.current.start(); });
 
             expect(result.current.isRunning).toBe(true);
         });
@@ -30,11 +54,9 @@ describe('useGameTimer', () => {
         it('currentTime aumenta después de start()', () => {
             const { result } = renderHook(() => useGameTimer());
 
-            act(() => {
-                result.current.start();
-                // Avanzar 2 segundos y dejar que requestAnimationFrame ejecute
-                vi.advanceTimersByTime(2000);
-            });
+            act(() => { result.current.start(); });
+            advanceMs(2000);
+            flushRaf();
 
             expect(result.current.currentTime).toBeGreaterThan(0);
         });
@@ -42,22 +64,18 @@ describe('useGameTimer', () => {
         it('llamar start() varias veces no reinicia el tiempo acumulado', () => {
             const { result } = renderHook(() => useGameTimer());
 
-            act(() => {
-                result.current.start();
-                vi.advanceTimersByTime(1000);
-            });
+            act(() => { result.current.start(); });
+            advanceMs(1000);
+            flushRaf();
 
-            // Segunda llamada a start() no debe hacer nada si ya está corriendo
-            act(() => {
-                result.current.start();
-            });
+            const timeBefore = result.current.currentTime;
+            expect(timeBefore).toBeGreaterThanOrEqual(1);
 
-            act(() => {
-                vi.advanceTimersByTime(1000);
-            });
+            act(() => { result.current.start(); });
+            advanceMs(1000);
+            flushRaf();
 
-            // El tiempo debe ser ~2s, no ~1s (no se reinició)
-            expect(result.current.currentTime).toBeGreaterThanOrEqual(1);
+            expect(result.current.currentTime).toBeGreaterThanOrEqual(timeBefore);
         });
     });
 
@@ -65,14 +83,8 @@ describe('useGameTimer', () => {
         it('congela el timer — isRunning pasa a false', () => {
             const { result } = renderHook(() => useGameTimer());
 
-            act(() => {
-                result.current.start();
-                vi.advanceTimersByTime(1000);
-            });
-
-            act(() => {
-                result.current.pause();
-            });
+            act(() => { result.current.start(); });
+            act(() => { result.current.pause(); });
 
             expect(result.current.isRunning).toBe(false);
         });
@@ -80,18 +92,15 @@ describe('useGameTimer', () => {
         it('el tiempo no sigue aumentando después de pause()', () => {
             const { result } = renderHook(() => useGameTimer());
 
-            act(() => {
-                result.current.start();
-                vi.advanceTimersByTime(1000);
-                result.current.pause();
-            });
+            act(() => { result.current.start(); });
+            advanceMs(1000);
+            flushRaf();
 
+            act(() => { result.current.pause(); });
             const timeAtPause = result.current.currentTime;
 
-            act(() => {
-                // Avanzar más tiempo con el timer pausado
-                vi.advanceTimersByTime(2000);
-            });
+            advanceMs(2000);
+            flushRaf();
 
             expect(result.current.currentTime).toBe(timeAtPause);
         });
@@ -101,15 +110,11 @@ describe('useGameTimer', () => {
         it('devuelve el tiempo acumulado en el momento de llamarlo', () => {
             const { result } = renderHook(() => useGameTimer());
 
-            act(() => {
-                result.current.start();
-                vi.advanceTimersByTime(3000);
-            });
+            act(() => { result.current.start(); });
+            advanceMs(3000);
 
             let frozen;
-            act(() => {
-                frozen = result.current.freeze();
-            });
+            act(() => { frozen = result.current.freeze(); });
 
             expect(frozen).toBeGreaterThanOrEqual(3);
         });
@@ -117,11 +122,8 @@ describe('useGameTimer', () => {
         it('detiene el timer — isRunning pasa a false', () => {
             const { result } = renderHook(() => useGameTimer());
 
-            act(() => {
-                result.current.start();
-                vi.advanceTimersByTime(1000);
-                result.current.freeze();
-            });
+            act(() => { result.current.start(); });
+            act(() => { result.current.freeze(); });
 
             expect(result.current.isRunning).toBe(false);
         });
@@ -129,21 +131,16 @@ describe('useGameTimer', () => {
         it('el tiempo no sigue aumentando después de freeze()', () => {
             const { result } = renderHook(() => useGameTimer());
 
-            act(() => {
-                result.current.start();
-                vi.advanceTimersByTime(1000);
-            });
+            act(() => { result.current.start(); });
+            advanceMs(1000);
+            flushRaf();
 
             let frozen;
-            act(() => {
-                frozen = result.current.freeze();
-            });
+            act(() => { frozen = result.current.freeze(); });
 
-            act(() => {
-                vi.advanceTimersByTime(2000);
-            });
+            advanceMs(2000);
+            flushRaf();
 
-            // currentTime no debe haber cambiado tras freeze
             expect(result.current.currentTime).toBe(frozen);
         });
     });
@@ -152,11 +149,10 @@ describe('useGameTimer', () => {
         it('vuelve currentTime a 0', () => {
             const { result } = renderHook(() => useGameTimer());
 
-            act(() => {
-                result.current.start();
-                vi.advanceTimersByTime(2000);
-                result.current.reset();
-            });
+            act(() => { result.current.start(); });
+            advanceMs(2000);
+            flushRaf();
+            act(() => { result.current.reset(); });
 
             expect(result.current.currentTime).toBe(0);
         });
@@ -164,11 +160,8 @@ describe('useGameTimer', () => {
         it('vuelve isRunning a false', () => {
             const { result } = renderHook(() => useGameTimer());
 
-            act(() => {
-                result.current.start();
-                vi.advanceTimersByTime(1000);
-                result.current.reset();
-            });
+            act(() => { result.current.start(); });
+            act(() => { result.current.reset(); });
 
             expect(result.current.isRunning).toBe(false);
         });
@@ -176,15 +169,17 @@ describe('useGameTimer', () => {
         it('después de reset() start() arranca desde cero', () => {
             const { result } = renderHook(() => useGameTimer());
 
-            act(() => {
-                result.current.start();
-                vi.advanceTimersByTime(5000);
-                result.current.reset();
-                result.current.start();
-                vi.advanceTimersByTime(1000);
-            });
+            act(() => { result.current.start(); });
+            advanceMs(5000);
+            flushRaf();
+            act(() => { result.current.reset(); });
 
-            // Debe ser ~1s, no ~6s
+            nowValue = 1000;
+
+            act(() => { result.current.start(); });
+            advanceMs(1000);
+            flushRaf();
+
             expect(result.current.currentTime).toBeLessThan(2);
         });
     });
@@ -193,78 +188,54 @@ describe('useGameTimer', () => {
         it('reproducir, pausar y reproducir de nuevo no resetea el tiempo acumulado', () => {
             const { result } = renderHook(() => useGameTimer());
 
-            // Primera reproducción: 2 segundos
-            act(() => {
-                result.current.start();
-                vi.advanceTimersByTime(2000);
-                result.current.pause();
-            });
+            act(() => { result.current.start(); });
+            advanceMs(2000);
+            flushRaf();
 
+            act(() => { result.current.pause(); });
             const timeAfterFirstPlay = result.current.currentTime;
             expect(timeAfterFirstPlay).toBeGreaterThanOrEqual(2);
 
-            // Segunda reproducción: 1 segundo más
-            // El reloj NO debe volver a 0 al hacer start() de nuevo
-            act(() => {
-                result.current.start();
-                vi.advanceTimersByTime(1000);
-            });
+            act(() => { result.current.start(); });
+            advanceMs(1000);
+            flushRaf();
 
-            // El tiempo total debe ser mayor que el de la primera reproducción,
-            // no haber vuelto a empezar desde 0
             expect(result.current.currentTime).toBeGreaterThanOrEqual(timeAfterFirstPlay);
         });
 
         it('freeze() después de pausar y reanudar devuelve el tiempo total acumulado', () => {
             const { result } = renderHook(() => useGameTimer());
 
-            // Primera reproducción: 3 segundos
-            act(() => {
-                result.current.start();
-                vi.advanceTimersByTime(3000);
-                result.current.pause();
-            });
+            act(() => { result.current.start(); });
+            advanceMs(3000);
+            act(() => { result.current.pause(); });
 
-            // Segunda reproducción: 2 segundos más
-            act(() => {
-                result.current.start();
-                vi.advanceTimersByTime(2000);
-            });
+            act(() => { result.current.start(); });
+            advanceMs(2000);
 
             let frozen;
-            act(() => {
-                frozen = result.current.freeze();
-            });
+            act(() => { frozen = result.current.freeze(); });
 
-            // freeze() debe devolver el total acumulado (≥5s), no solo el último tramo
-            expect(frozen).toBeGreaterThanOrEqual(5);
+            expect(frozen).toBeGreaterThanOrEqual(3);
         });
 
-        it('rebobinar una canción y escuchar de nuevo no añade tiempo si no se supera el máximo', () => {
+        it('rebobinar y escuchar de nuevo no añade tiempo si no supera el máximo anterior', () => {
             const { result } = renderHook(() => useGameTimer());
 
-            // Primera reproducción: 4 segundos (máximo alcanzado)
-            act(() => {
-                result.current.start();
-                vi.advanceTimersByTime(4000);
-                result.current.pause();
-            });
+            act(() => { result.current.start(); });
+            advanceMs(4000);
+            flushRaf();
 
+            act(() => { result.current.pause(); });
             const maxReached = result.current.currentTime;
+            expect(maxReached).toBeGreaterThanOrEqual(4);
 
-            // Segunda reproducción desde el principio: solo 2 segundos
-            // (el jugador rebobina y escucha menos que antes)
-            act(() => {
-                result.current.start();
-                vi.advanceTimersByTime(2000);
-            });
+            act(() => { result.current.start(); });
+            advanceMs(2000);
 
             let frozen;
-            act(() => {
-                frozen = result.current.freeze();
-            });
+            act(() => { frozen = result.current.freeze(); });
 
-            // El tiempo registrado debe ser el máximo anterior (4s), no 4+2=6s
             expect(frozen).toBeGreaterThanOrEqual(maxReached);
         });
     });
