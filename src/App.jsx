@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { API_BASE } from './config/env';
 
 import EqBars from './components/EqBars';
-import SectionLabel from './components/App/SectionLabel';
-import DailyCard from './components/App/DailyCard';
-import PackPreviewCard from './components/App/PackPreviewCard';
-import PlaylistCard from './components/App/PlaylistCard';
+import SectionLabel from './components/app/SectionLabel';
+import DailyCard from './components/app/DailyCard';
+import PackPreviewCard from './components/app/PackPreviewCard';
+import PlaylistCard from './components/app/PlaylistCard';
 import useHomeData from './hooks/useHomeData';
 import useCreateSession from './hooks/useCreateSession';
 import usePackPlay from './hooks/usePackPlay';
